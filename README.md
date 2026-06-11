@@ -3,7 +3,7 @@
 ## Installation
 
 ```bash
-pip install --upgrade git://github.com/ColibrITD-SAS/landscape_visualisation
+pip install --upgrade git+https://github.com/ColibrITD-SAS/landscape_visualisation
 ```
 
 ```python
