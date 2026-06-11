@@ -3,8 +3,9 @@
 ## Installation
 
 ```bash
-pip install --upgrade \ git+ssh://git@labdev.colibri-quantum.com/colibritd-rd/landscape_characterization.git
+pip install --upgrade git://github.com/ColibrITD-SAS/landscape_visualisation#
 ```
+
 ```python
 from landscape_characterization import landscape_visualization as lv
 from landscape_characterization import barren_plateaus as bp
@@ -19,11 +20,11 @@ It is designed to work **independently of QUICK / HDES internals** and can be
 used with any backend, as long as a suitable cost function is provided.
 
 The main purpose of this module is to:
+
 - perform 1D and 2D loss landscape scans,
 - analyze loss landscapes in PCA subspaces,
 - study gradient magnitudes and barren plateau effects,
 - visualize trajectories and parameter influence.
-
 
 ## Design philosophy
 
@@ -57,7 +58,7 @@ lv.loss_scan_1d(
 )
 ```
 
-***
+---
 
 #### `loss_scan_2d_3d`
 
@@ -79,16 +80,15 @@ lv.loss_scan_2d_3d(
 )
 ```
 
-
 ### PCA-based landscape analysis
 
 #### `perform_pca_and_analysis`
 
 Run a **full PCA-based loss landscape analysis pipeline**, including:
 
-*   PCA construction from an optimization trajectory
-*   loss scans in PCA space
-*   interpretability analysis
+- PCA construction from an optimization trajectory
+- loss scans in PCA space
+- interpretability analysis
 
 ```python
 lv.perform_pca_and_analysis(
