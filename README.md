@@ -35,6 +35,21 @@ All landscape analysis functions expect a cost function of the form:
 f(theta: np.ndarray) -> float
 ```
 
+In practice, you must wrap the original cost function so that it only
+takes the parameter vector as input and returns a scalar value.
+
+```python
+def your_cost_function(params, circuit, hamiltonian):
+    state = circuit.run(params)
+    return expectation_value(state, hamiltonian)
+
+wrapped_loss = lambda p: cost_function(
+    p,
+    circuit=my_circuit,
+    hamiltonian=my_hamiltonian,
+)
+```
+
 ## Available functions
 
 ### Loss landscape scans
@@ -194,22 +209,5 @@ lv.perform_pca_and_analysis(
 ##### Returns
 
 * Mapping returned by `analyze_pca`.
-
-## Example: wrapping a cost function
-
-In practice, you must wrap the original cost function so that it only
-takes the parameter vector as input and returns a scalar value.
-
-```python
-def your_cost_function(params, circuit, hamiltonian):
-    state = circuit.run(params)
-    return expectation_value(state, hamiltonian)
-
-wrapped_loss = lambda p: cost_function(
-    p,
-    circuit=my_circuit,
-    hamiltonian=my_hamiltonian,
-)
-```
 
 # Barren Plateau
