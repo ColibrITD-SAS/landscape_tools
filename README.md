@@ -26,8 +26,6 @@ The main purpose of this module is to:
 - study gradient magnitudes and barren plateau effects,
 - visualize trajectories and parameter influence.
 
-## Design philosophy
-
 Most algorithms implemented here only depend on a **generic cost
 function interface**, not on circuits, observables, or backends.
 
