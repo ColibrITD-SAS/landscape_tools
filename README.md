@@ -201,63 +201,14 @@ In practice, you must wrap the original cost function so that it only
 takes the parameter vector as input and returns a scalar value.
 
 ```python
-from landscape_characterization import landscape_visualization as lv
+def your_cost_function(params, circuit, hamiltonian):
+    state = circuit.run(params)
+    return expectation_value(state, hamiltonian)
 
-def create_cost_value_function(
-    use_state_vector: bool,
-    isa_circuits: Dict,
-    isa_obs_trans: Dict[str, List[Pauli]],
-    new_coeff_matrices: Dict,
-    x_list: List[List[tuple]] | List[List[float]],
-    eq_func: Callable,
-    run_mode: str,
-    shots_list: List[int],
-    original_params: Dict[str, npt.NDArray[np.float64]],
-    BC_mode: str,
-    backend,
-) -> Callable:
-
-    def f2(current_params):
-        value, _, _, _, _, _ = cost_function(
-            use_state_vector,
-            current_params,
-            isa_circuits,
-            isa_obs_trans,
-            new_coeff_matrices,
-            x_list,
-            eq_func,
-            run_mode,
-            shots_list,
-            original_params,
-            BC_mode,
-            backend,
-        )
-        return value
-
-    return f2
-
-
-loss_value = create_cost_value_function(
-    use_state_vector,
-    isa_circuits,
-    isa_obs_trans,
-    new_coeff_matrices,
-    x_list,
-    eq_func,
-    run_mode,
-    shots_list,
-    original_params,
-    BC_mode,
-    backend,
-)
-
-lv.perform_pca_and_analysis(
-    params_history,
-    loss_value,
-    n_steps=50,
-    offset=0.5,
-    n_top=12,
-    isa_circuits=isa_circuits,
+wrapped_loss = lambda p: cost_function(
+    p,
+    circuit=my_circuit,
+    hamiltonian=my_hamiltonian,
 )
 ```
 
