@@ -5,7 +5,7 @@ from qiskit.quantum_info import Pauli
 from itertools import repeat
 from collections import defaultdict
 from matplotlib.lines import Line2D
-from typing import Sequence, TypeVar, Any, Callable
+from typing import Sequence, TypeVar, Any, Callable, Literal
 from numpy.typing import ArrayLike
 
 T = TypeVar("T")
@@ -65,9 +65,13 @@ def extend_with_last(
 def pad_pauli_strings_growth(
     pauli: Pauli,
     target_n: int,
-    growth: str = "linear_half",
+    growth: Literal[
+        "identity",
+        "I",
+        "linear_half",
+        "log",
+    ],
     log_base: float = 2,
-    round_mode: str = "ceil",
 ) -> Pauli:
     """
     Pad a Pauli string on the left to reach a target number of qubits.
@@ -91,12 +95,6 @@ def pad_pauli_strings_growth(
                     of X/Y/Z operators is approximately ``log(target_n)``.
         log_base:
             Base of the logarithm used when ``growth="log"``.
-        round_mode:
-            Rounding mode used for target estimation.
-            Available options are:
-                - "ceil"
-                - "floor"
-                - "round"
 
     Returns:
         Pauli:
@@ -104,17 +102,7 @@ def pad_pauli_strings_growth(
     """
 
     def round_value(x):
-        if round_mode == "ceil":
-            return int(np.ceil(x))
-
-        elif round_mode == "floor":
-            return int(np.floor(x))
-
-        elif round_mode == "round":
-            return int(np.round(x))
-
-        else:
-            raise ValueError("round_mode must be 'ceil', 'floor', or 'round'")
+        return int(np.ceil(x))
 
     def target_number_of_active_paulis(n):
 
