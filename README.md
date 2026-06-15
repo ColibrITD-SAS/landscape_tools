@@ -83,7 +83,7 @@ lv.loss_scan_1d(
   Number of parallel jobs used during the scan evaluation.  
   Default is `-1` (use all available CPUs).
 
-
+````markdown
 #### `loss_scan_2d_3d`
 
 Evaluate the loss function on a **two-dimensional parameter plane**.
@@ -143,6 +143,8 @@ lv.loss_scan_2d_3d(
   Default is `-1` (use all available CPUs).
 
 ```
+```
+
 
 ### PCA-based landscape analysis
 
