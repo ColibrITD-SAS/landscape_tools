@@ -6,12 +6,17 @@
 Landscape Visualisation documentation
 =====================================
 
-Add your content using ``reStructuredText`` syntax. See the
-`reStructuredText <https://www.sphinx-doc.org/en/master/usage/restructuredtext/index.html>`_
-documentation for details.
+This library contains tools made to facilitate working with optimizable
+functions, with a special focus on objective functions of Variable Quantum
+Algorithms (VQAs). Each submodule of the library focuses on a different aspect.
+Check each of the pages to have an overview.
 
 
 .. toctree::
    :maxdepth: 2
    :caption: Contents:
 
+   barren_plateaus
+   exploratory_landscape_analysis
+   landscape_visualization
+   changelog

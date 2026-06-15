@@ -3,17 +3,17 @@
 ## Installation
 
 ```bash
-pip install --upgrade git+https://github.com/ColibrITD-SAS/landscape_visualisation
+pip install --upgrade git+https://github.com/ColibrITD-SAS/landscape_tools
 ```
 
 ```python
-from landscape_characterization import landscape_visualization as lv
-from landscape_characterization import barren_plateaus as bp
+from landscape_tools import landscape_visualization as lv
+from landscape_tools import barren_plateaus as bp
 ```
 
-***
+---
 
-# Landscape Visualization
+# Landscape Tools
 
 This module provides utilities to analyze and visualize the optimization
 landscape of variational quantum algorithms (VQAs).
@@ -79,24 +79,24 @@ lv.loss_scan_1d(
 
 ##### Parameters
 
-* **params** (`ParameterVector`)  
+- **params** (`ParameterVector`)  
   Reference parameter vector used as the center of the scan.
 
-* **direction** (`ArrayLike`)  
+- **direction** (`ArrayLike`)  
   Direction in parameter space along which the scan is performed.
 
-* **loss\_function** (`Callable[[ParameterVector], float]`)  
+- **loss_function** (`Callable[[ParameterVector], float]`)  
   Function returning the scalar loss value associated with a parameter vector.
 
-* **n\_steps** (`int`, optional)  
+- **n_steps** (`int`, optional)  
   Number of evaluation points along the scan direction.  
   Default is `200`.
 
-* **end\_points** (`tuple[float, float] | None`, optional)  
+- **end_points** (`tuple[float, float] | None`, optional)  
   Bounds of the scan parameter. If `None`, the default interval
   `(-π, π)` is used.
 
-* **n\_jobs** (`int`, optional)  
+- **n_jobs** (`int`, optional)  
   Number of parallel jobs used during the scan evaluation.  
   Default is `-1` (use all available CPUs).
 
@@ -126,35 +126,35 @@ lv.loss_scan_2d_3d(
 
 ##### Parameters
 
-* **params** (`ParameterVector`)  
+- **params** (`ParameterVector`)  
   Reference parameter vector used as the center of the scan.
 
-* **direction1** (`ArrayLike`)  
+- **direction1** (`ArrayLike`)  
   First direction in parameter space defining the scan plane.
 
-* **direction2** (`ArrayLike`)  
+- **direction2** (`ArrayLike`)  
   Second direction in parameter space defining the scan plane.
 
-* **loss\_function** (`Callable[[ParameterVector], float]`)  
+- **loss_function** (`Callable[[ParameterVector], float]`)  
   Function returning the scalar loss value associated with a parameter vector.
 
-* **n\_steps** (`int`, optional)  
+- **n_steps** (`int`, optional)  
   Number of evaluation points along each scan direction.  
   Default is `100`.
 
-* **end\_points\_x** (`tuple[float, float] | None`, optional)  
+- **end_points_x** (`tuple[float, float] | None`, optional)  
   Bounds of the scan parameter along the first direction.  
   If `None`, the default interval `(-π, π)` is used.
 
-* **end\_points\_y** (`tuple[float, float] | None`, optional)  
+- **end_points_y** (`tuple[float, float] | None`, optional)  
   Bounds of the scan parameter along the second direction.  
   If `None`, the default interval `(-π, π)` is used.
 
-* **plot3D** (`bool`, optional)  
+- **plot3D** (`bool`, optional)  
   Whether to generate a 3D visualization of the loss surface.  
   Default is `True`.
 
-* **n\_jobs** (`int`, optional)  
+- **n_jobs** (`int`, optional)  
   Number of parallel jobs used during the scan evaluation.  
   Default is `-1` (use all available CPUs).
 
@@ -186,33 +186,33 @@ lv.perform_pca_and_analysis(
 
 ##### Parameters
 
-* **params\_history** (`np.ndarray`)  
+- **params_history** (`np.ndarray`)  
   Array containing the parameter vectors recorded during optimization.
 
-* **loss\_function** (`Callable[[ParameterVector], float]`)  
+- **loss_function** (`Callable[[ParameterVector], float]`)  
   Function returning the scalar loss value associated with a parameter vector.
 
-* **n\_steps** (`int`)  
+- **n_steps** (`int`)  
   Number of evaluation points along each PCA direction.
 
-* **offset** (`float | tuple[float, float]`)  
+- **offset** (`float | tuple[float, float]`)  
   Margin added to the PCA scan bounds to enlarge the explored region.
 
-* **n\_top** (`int`)  
+- **n_top** (`int`)  
   Number of top-ranked entries displayed in interpretability analyses.
 
-* **circuit** (`Any`)  
+- **circuit** (`Any`)  
   Quantum circuit associated with the analyzed parameter space.
 
-* **n\_jobs** (`int`, optional)  
+- **n_jobs** (`int`, optional)  
   Number of parallel jobs used during the scan evaluation.  
   Default is `-1` (use all available CPUs).
 
 ##### Returns
 
-* Mapping returned by `analyze_pca`.
+- Mapping returned by `analyze_pca`.
 
-***
+---
 
 # Barren Plateau
 
@@ -258,40 +258,39 @@ bp.barren_plateaus_analysis(
 
 ##### Parameters
 
-* **experiment** (`ExperimentConfig`)  
+- **experiment** (`ExperimentConfig`)  
   Configuration object defining the barren plateau experiment settings.
 
-* **cost_function_builder** (`Callable`)  
+- **cost_function_builder** (`Callable`)  
   Function used to construct the cost function evaluated during the analysis.
 
-* **generate_params** (`Callable`)  
+- **generate_params** (`Callable`)  
   Function generating random parameter vectors for the variational circuits.
 
-* **generate_circuits** (`Callable`)  
+- **generate_circuits** (`Callable`)  
   Function generating the quantum circuits associated with the experiment.
 
-* **sampling** (`SamplingConfig | None`, optional)  
+- **sampling** (`SamplingConfig | None`, optional)  
   Configuration controlling adaptive sampling and bootstrap variance
   estimation.  
   If `None`, default sampling settings are used.
 
-* **execution** (`ExecutionConfig | None`, optional)  
+- **execution** (`ExecutionConfig | None`, optional)  
   Configuration controlling execution parameters such as parallelization and
   verbosity.  
   If `None`, default execution settings are used.
 
-* **variance_normalization** (`Callable | None`, optional)  
+- **variance_normalization** (`Callable | None`, optional)  
   Optional normalization applied to the estimated variances before analysis.
 
-* **\*\*cost_kwargs**  
+- **\*\*cost_kwargs**  
   Additional keyword arguments forwarded to the cost function builder.
 
 ##### Returns
 
-* **dict**  
+- **dict**  
   Dictionary containing the computed variance statistics, diagnostics, and
   analysis results.
-
 
 ### Available analysis modes
 

@@ -1,3 +1,5 @@
+"""Module meant to study barren plateaus"""
+
 from collections import defaultdict
 from itertools import repeat
 from typing import Any, Callable, Literal, Sequence, TypeVar
