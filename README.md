@@ -292,7 +292,6 @@ bp.barren_plateaus_analysis(
   Dictionary containing the computed variance statistics, diagnostics, and
   analysis results.
 
----
 
 ### Available analysis modes
 
@@ -318,8 +317,6 @@ experiment = bp.ExperimentConfig(
 )
 ```
 
----
-
 #### 2. Layer scaling analysis
 
 Study how the variance evolves as the circuit depth increases for fixed system
@@ -336,8 +333,6 @@ experiment = bp.ExperimentConfig(
     Ansatz="HardwareEfficient",
 )
 ```
-
----
 
 #### 3. Padding scaling analysis
 
@@ -360,8 +355,6 @@ experiment = bp.ExperimentConfig(
     ],
 )
 ```
-
----
 
 ### Example
 
