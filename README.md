@@ -11,6 +11,8 @@ from landscape_characterization import landscape_visualization as lv
 from landscape_characterization import barren_plateaus as bp
 ```
 
+***
+
 # Landscape Visualization
 
 This module provides utilities to analyze and visualize the optimization
@@ -210,4 +212,173 @@ lv.perform_pca_and_analysis(
 
 * Mapping returned by `analyze_pca`.
 
+***
+
 # Barren Plateau
+
+This module provides utilities to study **barren plateau phenomena** in
+variational quantum algorithms (VQAs).
+
+It enables systematic scaling analyses of loss variances as a function of:
+
+- the number of qubits,
+- the circuit depth,
+- the observable structure,
+- and padding strategies for growing operators.
+
+The implementation is designed to remain backend-agnostic and relies on generic
+user-defined circuit generation, parameter initialization, and cost function
+construction routines.
+
+### Main analysis function
+
+#### `barren_plateaus_analysis`
+
+Run a **complete barren plateau scaling analysis pipeline**.
+
+This utility automates the generation of variational circuits, parameter
+sampling, variance estimation, bootstrap diagnostics, and visualization of the
+loss variance scaling behavior across different system sizes and circuit depths.
+
+It can be used to investigate whether the variance of the cost function decays
+exponentially with problem size, a characteristic signature of barren plateaus.
+
+```python
+bp.barren_plateaus_analysis(
+    experiment,
+    cost_function_builder,
+    generate_params,
+    generate_circuits,
+    sampling=None,
+    execution=None,
+    variance_normalization=None,
+    **cost_kwargs,
+)
+```
+
+##### Parameters
+
+* **experiment** (`ExperimentConfig`)  
+  Configuration object defining the barren plateau experiment settings.
+
+* **cost_function_builder** (`Callable`)  
+  Function used to construct the cost function evaluated during the analysis.
+
+* **generate_params** (`Callable`)  
+  Function generating random parameter vectors for the variational circuits.
+
+* **generate_circuits** (`Callable`)  
+  Function generating the quantum circuits associated with the experiment.
+
+* **sampling** (`SamplingConfig | None`, optional)  
+  Configuration controlling adaptive sampling and bootstrap variance
+  estimation.  
+  If `None`, default sampling settings are used.
+
+* **execution** (`ExecutionConfig | None`, optional)  
+  Configuration controlling execution parameters such as parallelization and
+  verbosity.  
+  If `None`, default execution settings are used.
+
+* **variance_normalization** (`Callable | None`, optional)  
+  Optional normalization applied to the estimated variances before analysis.
+
+* **\*\*cost_kwargs**  
+  Additional keyword arguments forwarded to the cost function builder.
+
+##### Returns
+
+* **dict**  
+  Dictionary containing the computed variance statistics, diagnostics, and
+  analysis results.
+
+---
+
+### Available analysis modes
+
+The behavior of the analysis is controlled through the
+`experiment.analysis_type` field.
+
+Three main scaling studies are supported.
+
+#### 1. Qubit scaling analysis
+
+Study how the variance evolves as the number of qubits increases while keeping
+the circuit depth fixed.
+
+This is the standard barren plateau analysis used to detect exponential decay
+with system size.
+
+```python
+experiment = bp.ExperimentConfig(
+    analysis_type="qubits",
+    N_qubits=[4, 6, 8, 10],
+    N_layers=[2, 4],
+    Ansatz="HardwareEfficient",
+)
+```
+
+---
+
+#### 2. Layer scaling analysis
+
+Study how the variance evolves as the circuit depth increases for fixed system
+sizes.
+
+This analysis is useful for understanding how expressibility and depth impact
+trainability.
+
+```python
+experiment = bp.ExperimentConfig(
+    analysis_type="layers",
+    N_qubits=[6, 8],
+    N_layers=[1, 2, 4, 8],
+    Ansatz="HardwareEfficient",
+)
+```
+
+---
+
+#### 3. Padding scaling analysis
+
+Study how different Pauli-string growth strategies affect barren plateau
+behavior when increasing the system size.
+
+This mode compares several operator padding schemes during qubit scaling.
+
+```python
+experiment = bp.ExperimentConfig(
+    analysis_type="padding",
+    N_qubits=[4, 6, 8, 10],
+    N_layers=[2, 4],
+    Ansatz="HardwareEfficient",
+    initial_Pauli_string="ZZ",
+    padding_types=[
+        "linear_half",
+        "linear_full",
+        "logarithmic",
+    ],
+)
+```
+
+---
+
+### Example
+
+```python
+from landscape_characterization import barren_plateaus as bp
+
+experiment = bp.ExperimentConfig(
+    analysis_type="qubits",
+    N_qubits=[4, 6, 8],
+    N_layers=[2, 4],
+    Ansatz="HardwareEfficient",
+)
+
+results = bp.barren_plateaus_analysis(
+    experiment=experiment,
+    cost_function_builder=build_cost_function,
+    generate_params=generate_params,
+    generate_circuits=generate_circuits,
+)
+```
