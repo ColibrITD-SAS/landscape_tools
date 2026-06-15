@@ -44,8 +44,13 @@ autodoc_default_options = {
     # 'exclude-members': '__weakref__'
 }
 autodoc_member_order = "groupwise"
+autodoc_type_aliases = {
+    "Pauli": "Pauli",
+}
 simplify_optional_unions = True
 typehints_defaults = "comma"
+default_role = "math"
+add_module_names = False
 
 dotenv.load_dotenv()
 sphinx_github_changelog_token = os.getenv("SPHINX_GITHUB_CHANGELOG_TOKEN")
@@ -56,10 +61,6 @@ templates_path = ["_templates"]
 exclude_patterns = []
 
 
-# -- Options for HTML output -------------------------------------------------
-# https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
-
-html_theme = "alabaster"
 html_static_path = ["_static"]
 
 html_context = {
