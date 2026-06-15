@@ -83,12 +83,16 @@ lv.loss_scan_1d(
   Number of parallel jobs used during the scan evaluation.  
   Default is `-1` (use all available CPUs).
 
+
 #### `loss_scan_2d_3d`
 
-Evaluate the loss function on a **two-dimensional plane** spanned by two
-directions in parameter space.
+Evaluate the loss function on a **two-dimensional parameter plane**.
 
-Optionally produces a 3D surface visualization.
+This utility explores the loss landscape over a plane defined by two directions
+in parameter space. The loss function is evaluated on a regular two-dimensional
+grid, allowing visualization of local minima, valleys, saddle points, and
+overall surface structure. Optionally, a 3D representation of the loss surface
+can be generated.
 
 ```python
 lv.loss_scan_2d_3d(
@@ -96,11 +100,48 @@ lv.loss_scan_2d_3d(
     direction1,
     direction2,
     loss_function,
-    n_steps,
-    end_points_x,
-    end_points_y,
-    plot3D,
+    n_steps=100,
+    end_points_x=None,
+    end_points_y=None,
+    plot3D=True,
+    n_jobs=-1,
 )
+````
+
+##### Parameters
+
+* **params** (`ParameterVector`)  
+  Reference parameter vector used as the center of the scan.
+
+* **direction1** (`ArrayLike`)  
+  First direction in parameter space defining the scan plane.
+
+* **direction2** (`ArrayLike`)  
+  Second direction in parameter space defining the scan plane.
+
+* **loss\_function** (`Callable[[ParameterVector], float]`)  
+  Function returning the scalar loss value associated with a parameter vector.
+
+* **n\_steps** (`int`, optional)  
+  Number of evaluation points along each scan direction.  
+  Default is `100`.
+
+* **end\_points\_x** (`tuple[float, float] | None`, optional)  
+  Bounds of the scan parameter along the first direction.  
+  If `None`, the default interval `(-π, π)` is used.
+
+* **end\_points\_y** (`tuple[float, float] | None`, optional)  
+  Bounds of the scan parameter along the second direction.  
+  If `None`, the default interval `(-π, π)` is used.
+
+* **plot3D** (`bool`, optional)  
+  Whether to generate a 3D visualization of the loss surface.  
+  Default is `True`.
+
+* **n\_jobs** (`int`, optional)  
+  Number of parallel jobs used during the scan evaluation.  
+  Default is `-1` (use all available CPUs).
+
 ```
 
 ### PCA-based landscape analysis
