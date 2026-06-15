@@ -83,17 +83,6 @@ lv.loss_scan_1d(
   Number of parallel jobs used during the scan evaluation.  
   Default is `-1` (use all available CPUs).
 
-##### Notes
-
-The scanned parameter vectors are generated as:
-
-```python
-params + α * direction
-```
-
-where `α` is sampled uniformly between the specified endpoints.
-
-
 #### `loss_scan_2d_3d`
 
 Evaluate the loss function on a **two-dimensional plane** spanned by two
