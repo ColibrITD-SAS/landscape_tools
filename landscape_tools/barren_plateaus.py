@@ -90,7 +90,6 @@ def pad_pauli_strings_growth(
     target_n: int,
     growth: Literal["identity", "I", "linear_half", "log"] = "linear_half",
     log_base: float = 2,
-    round_mode: str = "ceil",
 ) -> Pauli:
     """Pad a Pauli string on the left to reach a target number of qubits.
 
@@ -98,16 +97,18 @@ def pad_pauli_strings_growth(
         pauli: Input Pauli string. (for instance ``Pauli("IIYY")``)
         target_n:
             Desired total number of qubits.
-        growth: Padding strategy. Available options are:
-
-            - "identity" or "I": Pad with identity operators only.
-            - "linear_half": Pad with X, Y or Z operators such that the total
-                number of X/Y/Z operators is approximately ``target_n / 2``.
-            - "log": Pad with X, Y or Z operators such that the total number
-                of X/Y/Z operators is approximately ``log(target_n)``.
-        log_base: Base of the logarithm used when ``growth="log"``.
-        round_mode: Rounding mode used for target estimation. Available options
-            are "ceil", "floor" and "round".
+        growth:
+            Padding strategy. Available options are:
+                - "identity" or "I":
+                    Pad with identity operators only.
+                - "linear_half":
+                    Pad with X, Y or Z operators such that the total number
+                    of X/Y/Z operators is approximately ``target_n / 2``.
+                - "log":
+                    Pad with X, Y or Z operators such that the total number
+                    of X/Y/Z operators is approximately ``log(target_n)``.
+        log_base:
+            Base of the logarithm used when ``growth="log"``.
 
     Returns:
         Pauli:
@@ -115,17 +116,7 @@ def pad_pauli_strings_growth(
     """
 
     def round_value(x):
-        if round_mode == "ceil":
-            return int(np.ceil(x))
-
-        elif round_mode == "floor":
-            return int(np.floor(x))
-
-        elif round_mode == "round":
-            return int(np.round(x))
-
-        else:
-            raise ValueError("round_mode must be 'ceil', 'floor', or 'round'")
+        return int(np.ceil(x))
 
     def target_number_of_active_paulis(n):
 
