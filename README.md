@@ -145,11 +145,15 @@ lv.loss_scan_2d_3d(
 
 #### `perform_pca_and_analysis`
 
-Run a **full PCA-based loss landscape analysis pipeline**, including:
+Run a **complete PCA-based loss landscape analysis pipeline**.
 
-- PCA construction from an optimization trajectory
-- loss scans in PCA space
-- interpretability analysis
+This utility builds a low-dimensional representation of an optimization
+trajectory using Principal Component Analysis (PCA), performs loss scans in the
+resulting PCA subspace, and generates interpretability analyses of the dominant
+optimization directions.
+
+The function is designed to help visualize and understand the geometry of the
+optimization process and the most significant parameter variations.
 
 ```python
 lv.perform_pca_and_analysis(
@@ -158,9 +162,38 @@ lv.perform_pca_and_analysis(
     n_steps,
     offset,
     n_top,
-    isa_circuits,
+    circuit,
+    n_jobs=-1,
 )
 ```
+
+##### Parameters
+
+* **params\_history** (`np.ndarray`)  
+  Array containing the parameter vectors recorded during optimization.
+
+* **loss\_function** (`Callable[[ParameterVector], float]`)  
+  Function returning the scalar loss value associated with a parameter vector.
+
+* **n\_steps** (`int`)  
+  Number of evaluation points along each PCA direction.
+
+* **offset** (`float | tuple[float, float]`)  
+  Margin added to the PCA scan bounds to enlarge the explored region.
+
+* **n\_top** (`int`)  
+  Number of top-ranked entries displayed in interpretability analyses.
+
+* **circuit** (`Any`)  
+  Quantum circuit associated with the analyzed parameter space.
+
+* **n\_jobs** (`int`, optional)  
+  Number of parallel jobs used during the scan evaluation.  
+  Default is `-1` (use all available CPUs).
+
+##### Returns
+
+* Mapping returned by `analyze_pca`.
 
 ## Example: wrapping a cost function
 
