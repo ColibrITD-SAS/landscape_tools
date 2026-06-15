@@ -28,7 +28,7 @@ The main purpose of this module is to:
 
 ## Design philosophy
 
-Most optimization algorithms implemented here only depend on a **generic cost
+Most algorithms implemented here only depend on a **generic cost
 function interface**, not on circuits, observables, or backends.
 
 All landscape analysis functions expect a cost function of the form:
@@ -46,7 +46,10 @@ f(theta: np.ndarray) -> float
 Evaluate the loss function along a **one-dimensional direction** in parameter
 space.
 
-Typically used to probe local flatness or curvature around a reference point.
+This utility scans a line in parameter space starting from a reference parameter
+vector and evaluates the loss function at regularly spaced points along the
+specified direction. It is commonly used to inspect the local geometry of the
+loss landscape, such as flatness, curvature, or the presence of nearby minima.
 
 ```python
 lv.loss_scan_1d(
@@ -55,10 +58,47 @@ lv.loss_scan_1d(
     loss_function,
     n_steps=200,
     end_points=None,
+    n_jobs=-1,
 )
 ```
 
----
+***
+
+##### Parameters
+
+* **params** (`ParameterVector`)  
+  Reference parameter vector used as the center of the scan.
+
+* **direction** (`ArrayLike`)  
+  Direction in parameter space along which the scan is performed.
+
+* **loss\_function** (`Callable[[ParameterVector], float]`)  
+  Function returning the scalar loss value associated with a parameter vector.
+
+* **n\_steps** (`int`, optional)  
+  Number of evaluation points along the scan direction.  
+  Default is `200`.
+
+* **end\_points** (`tuple[float, float] | None`, optional)  
+  Bounds of the scan parameter. If `None`, the default interval
+  `(-π, π)` is used.
+
+* **n\_jobs** (`int`, optional)  
+  Number of parallel jobs used during the scan evaluation.  
+  Default is `-1` (use all available CPUs).
+
+***
+
+##### Notes
+
+The scanned parameter vectors are generated as:
+
+```python
+params + α * direction
+```
+
+where `α` is sampled uniformly between the specified endpoints.
+
 
 #### `loss_scan_2d_3d`
 
@@ -73,10 +113,10 @@ lv.loss_scan_2d_3d(
     direction1,
     direction2,
     loss_function,
-    n_steps=100,
-    end_points_x=None,
-    end_points_y=None,
-    plot3D=True,
+    n_steps,
+    end_points_x,
+    end_points_y,
+    plot3D,
 )
 ```
 
