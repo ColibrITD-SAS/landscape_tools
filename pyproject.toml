@@ -16,6 +16,7 @@ dependencies = [
     "scikit-learn",
     "tqdm",
     "gudhi",
+    "qiskit",
 ]
 
 [tool.setuptools]
