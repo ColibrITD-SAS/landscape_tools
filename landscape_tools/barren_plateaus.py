@@ -760,7 +760,6 @@ def plot_joint_scaling_padding(
         sec_label = "n"
 
     tracked = np.array(tracked)
-    n_P = 1
 
     padding_label = padding_latex.get(
         padding_type,
