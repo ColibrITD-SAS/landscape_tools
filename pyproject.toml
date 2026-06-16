@@ -3,7 +3,7 @@ requires = ["setuptools>=80.0", "setuptools-scm[simple]>=8"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "landscape-characterization"
+name = "landscape-tools"
 description = "Internal tools for landscape characterization"
 requires-python = ">=3.9"
 dynamic = ["dependencies", "readme", "version"]
@@ -14,6 +14,3 @@ readme = { file = ["README.md"] }
 
 [tool.setuptools.packages.find]
 include = ["landscape_tools*"]
-exclude = ["ex*"]
-
-[tool.setuptools_scm]
