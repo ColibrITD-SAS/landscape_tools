@@ -577,12 +577,12 @@ def plot_layerwise_qubits_padding(
 
     padding_to_marker = {
     pad: markers[i % len(markers)]
-    for i, pad in enumerate(padding_types or [])
+    for i, pad in enumerate(padding_types or [None])
     }
 
     padding_to_linestyle = {
         pad: linestyles[i % len(linestyles)]
-        for i, pad in enumerate(padding_types or [])
+        for i, pad in enumerate(padding_types or [None])
     }
 
     plt.figure(figsize=(12, 7))
@@ -591,7 +591,7 @@ def plot_layerwise_qubits_padding(
 
     for lay in N_layers:
 
-        for pad in (padding_types or []):
+        for pad in (padding_types or [None]):
 
             key = (lay, pad)
             if key not in results:
@@ -635,18 +635,22 @@ def plot_layerwise_qubits_padding(
         for lay in N_layers
     ]
 
-    handles_padding = [
-        Line2D(
-            [0],
-            [0],
-            color="black",
-            linestyle=padding_to_linestyle[pad],
-            marker=padding_to_marker[pad],
-            lw=2,
-            label=padding_latex.get(pad, str(pad)),
-        )
-        for pad in (padding_types or [])
-    ]
+    handles_padding = (
+        []
+        if padding_types is None
+        else [
+            Line2D(
+                [0],
+                [0],
+                color="black",
+                linestyle=padding_to_linestyle[pad],
+                marker=padding_to_marker[pad],
+                lw=2,
+                label=padding_latex.get(pad, str(pad)),
+            )
+            for pad in padding_types
+        ]
+    )
 
     plt.legend(
         handles=handles_L + handles_padding,
