@@ -15,6 +15,7 @@ from typing import (
 
 import matplotlib.pyplot as plt
 import numpy as np
+import os
 from matplotlib.lines import Line2D
 from numpy.typing import ArrayLike
 from qiskit import QuantumCircuit
@@ -437,7 +438,7 @@ def adaptive_sampling_var(
 class Result(TypedDict):
     nq: int
     var: float | np.ndarray
-    obs: Pauli
+    obs: Optional[Pauli]
 
 
 class LayerResult(Result):
@@ -517,12 +518,12 @@ def plot_layerwise_qubits(
         handlelength=4,
     )
     plt.text(
-        0.98,
-        0.98,
+        0.02,
+        0.02,
         param_text,
         transform=plt.gca().transAxes,
-        ha="right",
-        va="top",
+        ha="left",
+        va="bottom",
         fontsize=11,
         bbox=dict(
             boxstyle="round",
@@ -537,9 +538,9 @@ def plot_layerwise_qubits(
 
 
 def plot_layerwise_qubits_padding(
-    results: dict[tuple[int, PaddingType], list[Result]],
+    results: dict[tuple[int, Optional[PaddingType]], list[Result]],
     N_layers: Sequence[int],
-    padding_types: Sequence[PaddingType],
+    padding_types: Optional[Sequence[PaddingType]],
     padding_latex: dict[str, str],
     get_obs_label: Callable[[Pauli, int], str],
     make_param_text: Callable[[], str],
@@ -576,11 +577,12 @@ def plot_layerwise_qubits_padding(
     }
 
     padding_to_marker = {
-        pad: markers[i % len(markers)] for i, pad in enumerate(padding_types)
+        pad: markers[i % len(markers)] for i, pad in enumerate(padding_types or [None])
     }
 
     padding_to_linestyle = {
-        pad: linestyles[i % len(linestyles)] for i, pad in enumerate(padding_types)
+        pad: linestyles[i % len(linestyles)]
+        for i, pad in enumerate(padding_types or [None])
     }
 
     plt.figure(figsize=(12, 7))
@@ -589,7 +591,7 @@ def plot_layerwise_qubits_padding(
 
     for lay in N_layers:
 
-        for pad in padding_types:
+        for pad in padding_types or [None]:
 
             key = (lay, pad)
             if key not in results:
@@ -633,18 +635,22 @@ def plot_layerwise_qubits_padding(
         for lay in N_layers
     ]
 
-    handles_padding = [
-        Line2D(
-            [0],
-            [0],
-            color="black",
-            linestyle=padding_to_linestyle[pad],
-            marker=padding_to_marker[pad],
-            lw=2,
-            label=padding_latex.get(pad, str(pad)),
-        )
-        for pad in padding_types
-    ]
+    handles_padding = (
+        []
+        if padding_types is None
+        else [
+            Line2D(
+                [0],
+                [0],
+                color="black",
+                linestyle=padding_to_linestyle[pad],
+                marker=padding_to_marker[pad],
+                lw=2,
+                label=padding_latex.get(pad, str(pad)),
+            )
+            for pad in padding_types
+        ]
+    )
 
     plt.legend(
         handles=handles_L + handles_padding,
@@ -654,16 +660,17 @@ def plot_layerwise_qubits_padding(
         handlelength=4,
     )
     plt.text(
-        0.98,
-        0.98,
+        0.02,
+        0.02,
         param_text,
         transform=plt.gca().transAxes,
-        ha="right",
-        va="top",
+        ha="left",
+        va="bottom",
         fontsize=11,
         bbox=dict(boxstyle="round", facecolor="white", edgecolor="gray", alpha=0.55),
     )
     plt.tight_layout()
+    os.makedirs("figures", exist_ok=True)
     plt.savefig("figures/layerwise_qubits_padding.pdf")
     plt.show()
 
@@ -756,12 +763,12 @@ def plot_joint_scaling_padding(
     plt.grid(True, alpha=0.4)
     plt.legend()
     plt.text(
-        0.98,
-        0.98,
+        0.02,
+        0.02,
         param_text,
         transform=plt.gca().transAxes,
-        ha="right",
-        va="top",
+        ha="left",
+        va="bottom",
         fontsize=11,
         bbox=dict(boxstyle="round", facecolor="white", edgecolor="gray", alpha=0.85),
     )
@@ -784,7 +791,7 @@ class CostFunctionContext(TypedDict):
     depth: int
     Ansatz: str
     circuits: QuantumCircuit
-    observables: Pauli
+    observables: Optional[Pauli]
 
 
 class CostFunctionBuilder(Protocol):
@@ -867,30 +874,41 @@ def barren_plateaus_analysis(
         )
 
     if experiment.analysis_type == "layerwise_qubits":
-        if experiment.observables_list is None:
-            raise ValueError(
-                "analysis_type='layerwise_qubits' requires observables_list."
-            )
-        if len(experiment.N_qubits) != len(experiment.observables_list):
+
+        if experiment.observables_list is not None and len(experiment.N_qubits) != len(
+            experiment.observables_list
+        ):
             raise ValueError(
                 "For analysis_type='layerwise_qubits', "
                 "N_qubits and observables_list must have the same length."
             )
 
     if experiment.analysis_type == "layerwise_qubits_padding":
-        if experiment.initial_Pauli_string is None:
+
+        if experiment.padding_types is None and experiment.initial_Pauli_string is None:
+            pass
+
+        elif (
+            experiment.padding_types is None or experiment.initial_Pauli_string is None
+        ):
             raise ValueError(
-                "analysis_type='layerwise_qubits_padding' requires initial_Pauli_string."
-            )
-        if experiment.padding_types is None:
-            raise ValueError(
-                "analysis_type='layerwise_qubits_padding' requires padding_types."
+                "analysis_type='layerwise_qubits_padding' requires "
+                "padding_types and initial_Pauli_string to either "
+                "both be None or both be defined."
             )
 
     if experiment.analysis_type == "joint_scaling_padding":
-        if experiment.initial_Pauli_string is None:
+
+        if experiment.padding_types is None and experiment.initial_Pauli_string is None:
+            pass
+
+        elif (
+            experiment.padding_types is None or experiment.initial_Pauli_string is None
+        ):
             raise ValueError(
-                "analysis_type='joint_scaling_padding' requires initial_Pauli_strings."
+                "analysis_type='joint_scaling_padding' requires "
+                "padding_types and initial_Pauli_string to either "
+                "both be None or both be defined."
             )
 
     # -------------------- Helpers --------------------
@@ -898,7 +916,7 @@ def barren_plateaus_analysis(
     def run_single_point(
         nq: int,
         lay: int,
-        obs_list_builder: Callable[[int], Pauli],
+        obs_list_builder: Optional[Callable[[int], Pauli]],
         extra_print: Optional[str] = None,
     ) -> LayerResult:
         print("--------------------")
@@ -913,9 +931,10 @@ def barren_plateaus_analysis(
 
         circuit = generate_circuits(n_qubits, depth, experiment.ansatz_name)
 
-        observable = obs_list_builder(nq)
+        observable = obs_list_builder(nq) if obs_list_builder is not None else None
 
-        print(f"Pauli string: {observable}")
+        if observable is not None:
+            print(f"Pauli string: {observable}")
 
         context: CostFunctionContext = {
             "n_qubits": n_qubits,
@@ -1029,28 +1048,39 @@ def barren_plateaus_analysis(
         results = defaultdict(list)
 
         for lay in experiment.N_layers:
-            assert experiment.observables_list is not None
-            for nq, Pauli_string in zip(
-                experiment.N_qubits, experiment.observables_list
-            ):
 
-                def obs_builder_1(target_n: int):
+            if experiment.observables_list is None:
+                iterable = [(nq, None) for nq in experiment.N_qubits]
+            else:
+                iterable = zip(
+                    experiment.N_qubits,
+                    experiment.observables_list,
+                )
 
-                    if isinstance(Pauli_string, Pauli):
-                        label = Pauli_string.to_label()
-                        pauli = Pauli_string
+            for nq, Pauli_string in iterable:
 
-                    else:
-                        label = Pauli_string
-                        pauli = Pauli(Pauli_string)
+                if Pauli_string is None:
+                    obs_builder_1 = None
 
-                    if len(label) != target_n:
-                        raise ValueError(
-                            f"Pauli string size mismatch: got '{label}' "
-                            f"(len={len(label)}), expected {target_n}"
-                        )
+                else:
 
-                    return pauli
+                    def obs_builder_1(target_n: int):
+
+                        if isinstance(Pauli_string, Pauli):
+                            label = Pauli_string.to_label()
+                            pauli = Pauli_string
+
+                        else:
+                            label = Pauli_string
+                            pauli = Pauli(Pauli_string)
+
+                        if len(label) != target_n:
+                            raise ValueError(
+                                f"Pauli string size mismatch: got '{label}' "
+                                f"(len={len(label)}), expected {target_n}"
+                            )
+
+                        return pauli
 
                 point = run_single_point(
                     nq=nq,
@@ -1063,7 +1093,6 @@ def barren_plateaus_analysis(
         plot_layerwise_qubits(
             results=results,
             N_layers=experiment.N_layers,
-            get_obs_label=get_obs_label,
             make_param_text=make_param_text,
         )
 
@@ -1075,29 +1104,53 @@ def barren_plateaus_analysis(
 
         results = defaultdict(list)
 
+        if experiment.padding_types is None and experiment.initial_Pauli_string is None:
+            padding_iter = [None]
+
+        elif (
+            experiment.padding_types is None or experiment.initial_Pauli_string is None
+        ):
+            raise ValueError(
+                "padding_types and initial_Pauli_string must either "
+                "both be None or both be defined."
+            )
+
+        else:
+            padding_iter = experiment.padding_types
+
         for lay in experiment.N_layers:
-            assert experiment.padding_types is not None
-            for pad in experiment.padding_types:
+
+            for pad in padding_iter:
+
                 for nq in experiment.N_qubits:
 
-                    def layerwise_obs_builder(target_n: int, pad: PaddingType = pad):
-                        assert experiment.initial_Pauli_string is not None
-                        return pad_pauli_strings_growth(
-                            experiment.initial_Pauli_string,
-                            target_n=target_n,
-                            growth=pad,
-                        )
+                    if pad is None:
+                        layerwise_obs_builder = None
+                        extra_print = None
+
+                    else:
+
+                        def layerwise_obs_builder(
+                            target_n: int,
+                            pad: PaddingType = pad,
+                        ):
+                            return pad_pauli_strings_growth(
+                                experiment.initial_Pauli_string,
+                                target_n=target_n,
+                                growth=pad,
+                            )
+
+                        extra_print = f"Padding type: {pad}"
 
                     point = run_single_point(
                         nq=nq,
                         lay=lay,
                         obs_list_builder=layerwise_obs_builder,
-                        extra_print=f"Padding type: {pad}",
+                        extra_print=extra_print,
                     )
 
                     results[(lay, pad)].append(point)
 
-        assert experiment.padding_types is not None
         plot_layerwise_qubits_padding(
             results=results,
             N_layers=experiment.N_layers,
@@ -1120,35 +1173,50 @@ def barren_plateaus_analysis(
         A_ext = extend_with_last(experiment.N_qubits, L)
         B_ext = extend_with_last(experiment.N_layers, L)
 
-        for nq, lay in zip(A_ext, B_ext):
+        if experiment.padding_types is None and experiment.initial_Pauli_string is None:
+            obs_builder = None
+            padding_type = None
+            extra_print = None
+
+        elif (
+            experiment.padding_types is None or experiment.initial_Pauli_string is None
+        ):
+            raise ValueError(
+                "padding_types and initial_Pauli_string must either "
+                "both be None or both be defined."
+            )
+
+        else:
+
+            padding_type = experiment.padding_types[0]
 
             def obs_builder(target_n: int):
-                assert experiment.initial_Pauli_string is not None
-                assert experiment.padding_types is not None
                 return pad_pauli_strings_growth(
                     experiment.initial_Pauli_string,
                     target_n=target_n,
-                    growth=experiment.padding_types[0],
+                    growth=padding_type,
                 )
 
-            assert experiment.padding_types is not None
+            extra_print = f"Padding type: {padding_type}"
+
+        for nq, lay in zip(A_ext, B_ext):
+
             point = run_single_point(
                 nq=nq,
                 lay=lay,
                 obs_list_builder=obs_builder,
-                extra_print=f"Padding type: {experiment.padding_types[0]}",
+                extra_print=extra_print,
             )
 
             tracked.append(point["var"])
             metadata.append(point)
 
-        assert experiment.padding_types is not None
         joint_scaling_results: AnalysisResult = {
             "tracked": np.array(tracked),
             "metadata": metadata,
             "N_qubits_extended": A_ext,
             "N_layers_extended": B_ext,
-            "padding_type": experiment.padding_types[0],
+            "padding_type": padding_type,
         }
 
         plot_joint_scaling_padding(
@@ -1157,7 +1225,7 @@ def barren_plateaus_analysis(
             B_ext=B_ext,
             N_qubits=experiment.N_qubits,
             N_layers=experiment.N_layers,
-            padding_type=experiment.padding_types[0],
+            padding_type=padding_type,
             padding_latex=padding_latex,
             Ansatz=experiment.ansatz_name,
             rel_err_target=sampling.rel_err_target,
