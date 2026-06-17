@@ -1,0 +1,30 @@
+{
+  "[python]": {
+    "editor.defaultFormatter": "ms-python.black-formatter"
+  },
+  "python.analysis.typeCheckingMode": "strict",
+  "editor.formatOnSave": true,
+  "python.analysis.autoImportCompletions": true,
+  "python.analysis.autoFormatStrings": true,
+  "python.analysis.diagnosticSeverityOverrides": {
+    "reportUnknownArgumentType": "none",
+    "reportUnknownVariableType": "none",
+    "reportUnknownMemberType": "none",
+    "reportUnknownLambdaType": "none",
+    "reportMissingTypeStubs": "none",
+    "reportUnknownParameterType": "none",
+    "reportUnnecessaryTypeIgnoreComment": "warning"
+    // "enableTypeIgnoreComments": "false"
+    // "reportGeneralTypeIssues": "none"
+  },
+  "autoDocstring.docstringFormat": "google-notypes",
+  "isort.check": true,
+  "isort.args": ["--profile", "black"],
+  "editor.codeActionsOnSave": {
+    "source.organizeImports": "always"
+  },
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "python-envs.defaultEnvManager": "ms-python.python:system",
+  "python-envs.defaultPackageManager": "ms-python.python:pip",
+  "python-envs.pythonProjects": []
+}

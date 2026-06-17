@@ -1,0 +1,13 @@
+{
+  "recommendations": [
+    "ms-python.isort",
+    "ms-python.black-formatter",
+    "ms-python.vscode-pylance",
+    "streetsidesoftware.code-spell-checker",
+    "ms-toolsai.jupyter",
+    "James-Yu.latex-workshop",
+    "tecosaur.latex-utilities",
+    "mathematic.vscode-latex",
+    "esbenp.prettier-vscode"
+  ]
+}
