@@ -661,12 +661,12 @@ def plot_layerwise_qubits_padding(
         handlelength=4,
     )
     plt.text(
-        0.98,
-        0.98,
+        0.02,
+        0.02,
         param_text,
         transform=plt.gca().transAxes,
-        ha="right",
-        va="top",
+        ha="left",
+        va="bottom",
         fontsize=11,
         bbox=dict(boxstyle="round", facecolor="white", edgecolor="gray", alpha=0.55),
     )
