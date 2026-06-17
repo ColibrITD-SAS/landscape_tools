@@ -1083,7 +1083,6 @@ def barren_plateaus_analysis(
         plot_layerwise_qubits(
             results=results,
             N_layers=experiment.N_layers,
-            get_obs_label=get_obs_label,
             make_param_text=make_param_text,
         )
 
