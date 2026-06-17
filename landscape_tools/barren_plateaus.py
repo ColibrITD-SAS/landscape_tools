@@ -460,7 +460,6 @@ def plot_layerwise_qubits(
             - "var": variance value
             - "obs": observable identifier
         N_layers: Sequence of circuit depths to display.
-        get_obs_label: Callable used to generate observable labels.
         make_param_text: Callable returning the parameter summary text displayed
             on the figure.
     """
@@ -542,7 +541,6 @@ def plot_layerwise_qubits_padding(
     N_layers: Sequence[int],
     padding_types: Optional[Sequence[PaddingType]],
     padding_latex: dict[str, str],
-    get_obs_label: Callable[[Pauli, int], str],
     make_param_text: Callable[[], str],
 ) -> None:
     """Plot the variance of loss values as a function of the number of qubits
@@ -558,7 +556,6 @@ def plot_layerwise_qubits_padding(
         padding_types: Sequence of padding strategies to include in the plot.
         padding_latex: Mapping from padding strategy identifiers to LaTeX labels
             used in the legend.
-        get_obs_label: Callable used to generate observable labels.
         make_param_text: Callable returning the parameter summary text displayed
             on the figure.
     """
@@ -587,8 +584,6 @@ def plot_layerwise_qubits_padding(
 
     plt.figure(figsize=(12, 7))
 
-    obs_label = None
-
     for lay in N_layers:
 
         for pad in padding_types or [None]:
@@ -602,12 +597,6 @@ def plot_layerwise_qubits_padding(
             xs = [d["nq"] for d in pts]
             ys = [d["var"] for d in pts]
 
-            if obs_label is None:
-                obs_label = get_obs_label(
-                    pts[0]["obs"],
-                    0,
-                )
-
             plt.semilogy(
                 xs,
                 ys,
@@ -618,9 +607,6 @@ def plot_layerwise_qubits_padding(
                 markersize=5,
                 label=None,
             )
-
-    if obs_label is None:
-        obs_label = "P_0"
 
     plt.xlabel(r"Number of qubits $n_q$")
 
@@ -806,7 +792,7 @@ class VarianceNormalisation(Protocol):
         n_qubits: int,
         depth: int,
         Ansatz: str,
-        observable: Pauli,
+        observable: Pauli | None,
         context: CostFunctionContext,
         raw_var: np.ndarray,
         L_samples: np.ndarray,
@@ -1004,12 +990,6 @@ def barren_plateaus_analysis(
             "var": var,
             "obs": observable,
         }
-
-    def get_obs_label(obs: Pauli, j: int):
-        try:
-            return obs["F_0"][j].to_label()
-        except Exception:
-            return f"P_{j}"
 
     def make_param_text(extra_lines: Optional[str] = None):
         use_state_vector = cost_kwargs.get("use_state_vector", None)
