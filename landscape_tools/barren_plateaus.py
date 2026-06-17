@@ -1,5 +1,6 @@
 """Module meant to study barren plateaus"""
 
+import os
 from collections import defaultdict
 from itertools import repeat
 from typing import (
@@ -15,7 +16,6 @@ from typing import (
 
 import matplotlib.pyplot as plt
 import numpy as np
-import os
 from matplotlib.lines import Line2D
 from numpy.typing import ArrayLike
 from qiskit import QuantumCircuit
@@ -448,7 +448,7 @@ class LayerResult(Result):
 def plot_layerwise_qubits(
     results: dict[int, list[Result]],
     N_layers: Sequence[int],
-    make_param_text: Callable,
+    make_param_text: str,
 ) -> None:
     """Plot the variance of loss values as a function of the number of qubits
     for different circuit depths.
@@ -460,11 +460,11 @@ def plot_layerwise_qubits(
             - "var": variance value
             - "obs": observable identifier
         N_layers: Sequence of circuit depths to display.
-        make_param_text: Callable returning the parameter summary text displayed
+        make_param_text: Parameter summary text displayed
             on the figure.
     """
 
-    param_text = make_param_text()
+    param_text = make_param_text
 
     layer_colors = plt.cm.tab10(  # pyright: ignore[reportAttributeAccessIssue]
         np.linspace(0, 1, max(len(N_layers), 1))
@@ -541,7 +541,7 @@ def plot_layerwise_qubits_padding(
     N_layers: Sequence[int],
     padding_types: Optional[Sequence[PaddingType]],
     padding_latex: dict[str, str],
-    make_param_text: Callable[[], str],
+    make_param_text: str,
 ) -> None:
     """Plot the variance of loss values as a function of the number of qubits
     for different circuit depths and padding strategies.
@@ -556,11 +556,11 @@ def plot_layerwise_qubits_padding(
         padding_types: Sequence of padding strategies to include in the plot.
         padding_latex: Mapping from padding strategy identifiers to LaTeX labels
             used in the legend.
-        make_param_text: Callable returning the parameter summary text displayed
+        make_param_text: Parameter summary text displayed
             on the figure.
     """
 
-    param_text = make_param_text()
+    param_text = make_param_text
 
     markers = ["o", "s", "^", "D", "v", "P", "X"]
     linestyles = ["-", "--", "-.", ":"]
@@ -667,7 +667,7 @@ def plot_joint_scaling_padding(
     B_ext: Sequence[int],
     N_qubits: Sequence[int],
     N_layers: Sequence[int],
-    padding_type: str,
+    padding_type: str | None,
     padding_latex: dict[str, str],
     Ansatz: str,
     rel_err_target: float,
@@ -902,7 +902,7 @@ def barren_plateaus_analysis(
     def run_single_point(
         nq: int,
         lay: int,
-        obs_list_builder: Optional[Callable[[int], Pauli]],
+        obs_list_builder: Optional[Callable[[int], Pauli]] | None,
         extra_print: Optional[str] = None,
     ) -> LayerResult:
         print("--------------------")
@@ -991,28 +991,24 @@ def barren_plateaus_analysis(
             "obs": observable,
         }
 
-    def make_param_text(extra_lines: Optional[str] = None):
-        use_state_vector = cost_kwargs.get("use_state_vector", None)
-        shots = cost_kwargs.get("shots", None)
+    use_state_vector = cost_kwargs.get("use_state_vector", None)
+    shots = cost_kwargs.get("shots", None)
 
-        lines = [
-            f"{experiment.ansatz_name}",
-        ]
+    lines = [
+        f"{experiment.ansatz_name}",
+    ]
 
-        if use_state_vector is not None:
-            lines.append(f"state_vector = {use_state_vector}")
+    if use_state_vector is not None:
+        lines.append(f"state_vector = {use_state_vector}")
 
-        if use_state_vector is False and shots is not None:
-            lines.append(f"shots = {shots:.0e}")
+    if use_state_vector is False and shots is not None:
+        lines.append(f"shots = {shots:.0e}")
 
-        lines.append(
-            f"$\\epsilon_{{rel}} = {sampling.rel_err_target:.0%}$".replace("%", "\\%")
-        )
+    lines.append(
+        f"$\\epsilon_{{rel}} = {sampling.rel_err_target:.0%}$".replace("%", "\\%")
+    )
 
-        if extra_lines is not None:
-            lines.insert(1, extra_lines)
-
-        return "\n".join(lines)
+    param_text = "\n".join(lines)
 
     padding_latex = {
         "identity": r"$I^{n_q}$",
@@ -1073,7 +1069,7 @@ def barren_plateaus_analysis(
         plot_layerwise_qubits(
             results=results,
             N_layers=experiment.N_layers,
-            make_param_text=make_param_text,
+            make_param_text=param_text,
         )
 
         return results
@@ -1114,6 +1110,7 @@ def barren_plateaus_analysis(
                             target_n: int,
                             pad: PaddingType = pad,
                         ):
+                            assert experiment.initial_Pauli_string is not None
                             return pad_pauli_strings_growth(
                                 experiment.initial_Pauli_string,
                                 target_n=target_n,
@@ -1136,8 +1133,7 @@ def barren_plateaus_analysis(
             N_layers=experiment.N_layers,
             padding_types=experiment.padding_types,
             padding_latex=padding_latex,
-            get_obs_label=get_obs_label,
-            make_param_text=make_param_text,
+            make_param_text=param_text,
         )
 
         return results
@@ -1171,6 +1167,7 @@ def barren_plateaus_analysis(
             padding_type = experiment.padding_types[0]
 
             def obs_builder(target_n: int):
+                assert experiment.initial_Pauli_string is not None
                 return pad_pauli_strings_growth(
                     experiment.initial_Pauli_string,
                     target_n=target_n,
