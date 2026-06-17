@@ -438,7 +438,7 @@ def adaptive_sampling_var(
 class Result(TypedDict):
     nq: int
     var: float | np.ndarray
-    obs: Pauli
+    obs: Optional[Pauli]
 
 
 class LayerResult(Result):
@@ -538,7 +538,7 @@ def plot_layerwise_qubits(
 
 
 def plot_layerwise_qubits_padding(
-    results: dict[tuple[int, PaddingType], list[Result]],
+    results: dict[tuple[int, Optional[PaddingType]], list[Result]],
     N_layers: Sequence[int],
     padding_types: Optional[Sequence[PaddingType]],
     padding_latex: dict[str, str],
@@ -577,8 +577,7 @@ def plot_layerwise_qubits_padding(
     }
 
     padding_to_marker = {
-    pad: markers[i % len(markers)]
-    for i, pad in enumerate(padding_types or [None])
+        pad: markers[i % len(markers)] for i, pad in enumerate(padding_types or [None])
     }
 
     padding_to_linestyle = {
@@ -592,7 +591,7 @@ def plot_layerwise_qubits_padding(
 
     for lay in N_layers:
 
-        for pad in (padding_types or [None]):
+        for pad in padding_types or [None]:
 
             key = (lay, pad)
             if key not in results:
@@ -792,7 +791,7 @@ class CostFunctionContext(TypedDict):
     depth: int
     Ansatz: str
     circuits: QuantumCircuit
-    observables: Pauli
+    observables: Optional[Pauli]
 
 
 class CostFunctionBuilder(Protocol):
@@ -874,32 +873,43 @@ def barren_plateaus_analysis(
             f"Expected one of {valid_analysis_types}."
         )
 
-    # if experiment.analysis_type == "layerwise_qubits":
-    #     # if experiment.observables_list is None:
-    #     #     raise ValueError(
-    #     #         "analysis_type='layerwise_qubits' requires observables_list."
-    #     #     )
-    #     if len(experiment.N_qubits) != len(experiment.observables_list):
-    #         raise ValueError(
-    #             "For analysis_type='layerwise_qubits', "
-    #             "N_qubits and observables_list must have the same length."
-    #         )
+    if experiment.analysis_type == "layerwise_qubits":
 
-    # if experiment.analysis_type == "layerwise_qubits_padding":
-    #     # if experiment.initial_Pauli_string is None:
-    #     #     raise ValueError(
-    #     #         "analysis_type='layerwise_qubits_padding' requires initial_Pauli_string."
-    #     #     )
-    #     if experiment.padding_types is None:
-    #         raise ValueError(
-    #             "analysis_type='layerwise_qubits_padding' requires padding_types."
-    #         )
+        if experiment.observables_list is not None and len(experiment.N_qubits) != len(
+            experiment.observables_list
+        ):
+            raise ValueError(
+                "For analysis_type='layerwise_qubits', "
+                "N_qubits and observables_list must have the same length."
+            )
 
-    # if experiment.analysis_type == "joint_scaling_padding":
-    #     if experiment.initial_Pauli_string is None:
-    #         raise ValueError(
-    #             "analysis_type='joint_scaling_padding' requires initial_Pauli_strings."
-    #         )
+    if experiment.analysis_type == "layerwise_qubits_padding":
+
+        if experiment.padding_types is None and experiment.initial_Pauli_string is None:
+            pass
+
+        elif (
+            experiment.padding_types is None or experiment.initial_Pauli_string is None
+        ):
+            raise ValueError(
+                "analysis_type='layerwise_qubits_padding' requires "
+                "padding_types and initial_Pauli_string to either "
+                "both be None or both be defined."
+            )
+
+    if experiment.analysis_type == "joint_scaling_padding":
+
+        if experiment.padding_types is None and experiment.initial_Pauli_string is None:
+            pass
+
+        elif (
+            experiment.padding_types is None or experiment.initial_Pauli_string is None
+        ):
+            raise ValueError(
+                "analysis_type='joint_scaling_padding' requires "
+                "padding_types and initial_Pauli_string to either "
+                "both be None or both be defined."
+            )
 
     # -------------------- Helpers --------------------
 
@@ -921,7 +931,7 @@ def barren_plateaus_analysis(
 
         circuit = generate_circuits(n_qubits, depth, experiment.ansatz_name)
 
-        observable = (obs_list_builder(nq) if obs_list_builder is not None else None)
+        observable = obs_list_builder(nq) if obs_list_builder is not None else None
 
         if observable is not None:
             print(f"Pauli string: {observable}")
@@ -1090,57 +1100,15 @@ def barren_plateaus_analysis(
 
     # -------------------- Analysis 2: layerwise_qubits_padding --------------------
 
-    # if experiment.analysis_type == "layerwise_qubits_padding":
-
-    #     results = defaultdict(list)
-
-    #     for lay in experiment.N_layers:
-    #         assert experiment.padding_types is not None
-    #         for pad in experiment.padding_types:
-    #             for nq in experiment.N_qubits:
-
-    #                 def layerwise_obs_builder(target_n: int, pad: PaddingType = pad):
-    #                     assert experiment.initial_Pauli_string is not None
-    #                     return pad_pauli_strings_growth(
-    #                         experiment.initial_Pauli_string,
-    #                         target_n=target_n,
-    #                         growth=pad,
-    #                     )
-
-    #                 point = run_single_point(
-    #                     nq=nq,
-    #                     lay=lay,
-    #                     obs_list_builder=layerwise_obs_builder,
-    #                     extra_print=f"Padding type: {pad}",
-    #                 )
-
-    #                 results[(lay, pad)].append(point)
-
-    #     assert experiment.padding_types is not None
-    #     plot_layerwise_qubits_padding(
-    #         results=results,
-    #         N_layers=experiment.N_layers,
-    #         padding_types=experiment.padding_types,
-    #         padding_latex=padding_latex,
-    #         get_obs_label=get_obs_label,
-    #         make_param_text=make_param_text,
-    #     )
-
-    #     return results
-
     if experiment.analysis_type == "layerwise_qubits_padding":
 
         results = defaultdict(list)
 
-        if (
-            experiment.padding_types is None
-            and experiment.initial_Pauli_string is None
-        ):
+        if experiment.padding_types is None and experiment.initial_Pauli_string is None:
             padding_iter = [None]
 
         elif (
-            experiment.padding_types is None
-            or experiment.initial_Pauli_string is None
+            experiment.padding_types is None or experiment.initial_Pauli_string is None
         ):
             raise ValueError(
                 "padding_types and initial_Pauli_string must either "
@@ -1196,60 +1164,6 @@ def barren_plateaus_analysis(
 
     # -------------------- Analysis 3: joint_scaling_padding --------------------
 
-    # if experiment.analysis_type == "joint_scaling_padding":
-
-    #     tracked = []
-    #     metadata = []
-
-    #     L = max(len(experiment.N_qubits), len(experiment.N_layers))
-    #     A_ext = extend_with_last(experiment.N_qubits, L)
-    #     B_ext = extend_with_last(experiment.N_layers, L)
-
-    #     for nq, lay in zip(A_ext, B_ext):
-
-    #         def obs_builder(target_n: int):
-    #             assert experiment.initial_Pauli_string is not None
-    #             assert experiment.padding_types is not None
-    #             return pad_pauli_strings_growth(
-    #                 experiment.initial_Pauli_string,
-    #                 target_n=target_n,
-    #                 growth=experiment.padding_types[0],
-    #             )
-
-    #         assert experiment.padding_types is not None
-    #         point = run_single_point(
-    #             nq=nq,
-    #             lay=lay,
-    #             obs_list_builder=obs_builder,
-    #             extra_print=f"Padding type: {experiment.padding_types[0]}",
-    #         )
-
-    #         tracked.append(point["var"])
-    #         metadata.append(point)
-
-    #     assert experiment.padding_types is not None
-    #     joint_scaling_results: AnalysisResult = {
-    #         "tracked": np.array(tracked),
-    #         "metadata": metadata,
-    #         "N_qubits_extended": A_ext,
-    #         "N_layers_extended": B_ext,
-    #         "padding_type": experiment.padding_types[0],
-    #     }
-
-    #     plot_joint_scaling_padding(
-    #         tracked=np.array(tracked),
-    #         A_ext=A_ext,
-    #         B_ext=B_ext,
-    #         N_qubits=experiment.N_qubits,
-    #         N_layers=experiment.N_layers,
-    #         padding_type=experiment.padding_types[0],
-    #         padding_latex=padding_latex,
-    #         Ansatz=experiment.ansatz_name,
-    #         rel_err_target=sampling.rel_err_target,
-    #     )
-
-    #     return joint_scaling_results
-
     if experiment.analysis_type == "joint_scaling_padding":
 
         tracked = []
@@ -1259,17 +1173,13 @@ def barren_plateaus_analysis(
         A_ext = extend_with_last(experiment.N_qubits, L)
         B_ext = extend_with_last(experiment.N_layers, L)
 
-        if (
-            experiment.padding_types is None
-            and experiment.initial_Pauli_string is None
-        ):
+        if experiment.padding_types is None and experiment.initial_Pauli_string is None:
             obs_builder = None
             padding_type = None
             extra_print = None
 
         elif (
-            experiment.padding_types is None
-            or experiment.initial_Pauli_string is None
+            experiment.padding_types is None or experiment.initial_Pauli_string is None
         ):
             raise ValueError(
                 "padding_types and initial_Pauli_string must either "
