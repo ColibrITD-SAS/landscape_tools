@@ -15,6 +15,7 @@ from typing import (
 
 import matplotlib.pyplot as plt
 import numpy as np
+import os
 from matplotlib.lines import Line2D
 from numpy.typing import ArrayLike
 from qiskit import QuantumCircuit
@@ -670,6 +671,7 @@ def plot_layerwise_qubits_padding(
         bbox=dict(boxstyle="round", facecolor="white", edgecolor="gray", alpha=0.55),
     )
     plt.tight_layout()
+    os.makedirs("figures", exist_ok=True)
     plt.savefig("figures/layerwise_qubits_padding.pdf")
     plt.show()
 
