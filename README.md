@@ -11,7 +11,7 @@ from landscape_tools import landscape_visualization as lv
 from landscape_tools import barren_plateaus as bp
 ```
 
-# Landscape Characterization
+## Landscape Characterization
 
 This module provides utilities to analyze and visualize the optimization
 landscape of variational quantum algorithms (VQAs).
