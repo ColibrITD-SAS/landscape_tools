@@ -866,32 +866,32 @@ def barren_plateaus_analysis(
             f"Expected one of {valid_analysis_types}."
         )
 
-    if experiment.analysis_type == "layerwise_qubits":
-        if experiment.observables_list is None:
-            raise ValueError(
-                "analysis_type='layerwise_qubits' requires observables_list."
-            )
-        if len(experiment.N_qubits) != len(experiment.observables_list):
-            raise ValueError(
-                "For analysis_type='layerwise_qubits', "
-                "N_qubits and observables_list must have the same length."
-            )
+    # if experiment.analysis_type == "layerwise_qubits":
+    #     # if experiment.observables_list is None:
+    #     #     raise ValueError(
+    #     #         "analysis_type='layerwise_qubits' requires observables_list."
+    #     #     )
+    #     if len(experiment.N_qubits) != len(experiment.observables_list):
+    #         raise ValueError(
+    #             "For analysis_type='layerwise_qubits', "
+    #             "N_qubits and observables_list must have the same length."
+    #         )
 
-    if experiment.analysis_type == "layerwise_qubits_padding":
-        if experiment.initial_Pauli_string is None:
-            raise ValueError(
-                "analysis_type='layerwise_qubits_padding' requires initial_Pauli_string."
-            )
-        if experiment.padding_types is None:
-            raise ValueError(
-                "analysis_type='layerwise_qubits_padding' requires padding_types."
-            )
+    # if experiment.analysis_type == "layerwise_qubits_padding":
+    #     # if experiment.initial_Pauli_string is None:
+    #     #     raise ValueError(
+    #     #         "analysis_type='layerwise_qubits_padding' requires initial_Pauli_string."
+    #     #     )
+    #     if experiment.padding_types is None:
+    #         raise ValueError(
+    #             "analysis_type='layerwise_qubits_padding' requires padding_types."
+    #         )
 
-    if experiment.analysis_type == "joint_scaling_padding":
-        if experiment.initial_Pauli_string is None:
-            raise ValueError(
-                "analysis_type='joint_scaling_padding' requires initial_Pauli_strings."
-            )
+    # if experiment.analysis_type == "joint_scaling_padding":
+    #     if experiment.initial_Pauli_string is None:
+    #         raise ValueError(
+    #             "analysis_type='joint_scaling_padding' requires initial_Pauli_strings."
+    #         )
 
     # -------------------- Helpers --------------------
 
