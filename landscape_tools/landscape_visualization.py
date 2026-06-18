@@ -531,10 +531,9 @@ def plot_pca_loss_scan_3d(
     alpha_surface: float = 0.85,
     trajectory_kwargs: dict[str, Any] | None = None,
 ):
-    """
-    Plot a 3D PCA loss landscape.
+    """Plot a 3D PCA loss landscape.
 
-    Parameters:
+    Args:
         scan_result: Mapping returned by ``pca_loss_scan``.
         cmap: Colormap used for the surface.
         elev: Elevation angle of the view.
@@ -544,13 +543,12 @@ def plot_pca_loss_scan_3d(
 
     Notes:
         - The figure is saved to ``figures/pcaLandscape3d.pdf``.
-        - If ``LogNorm()`` is used for normalization,
-        the values in ``Z`` must be strictly positive.
+        - If ``LogNorm()`` is used for normalization, the values in ``Z`` must
+            be strictly positive.
 
     Returns:
-        fig: Figure containing the plot.
-        axes: Tuple ``(ax1, ax2)`` containing the main
-            PCA landscape axis and the log-scale surface axis.
+        Figure containing the plot and Tuple ``(ax1, ax2)`` containing the main
+        PCA landscape axis and the log-scale surface axis.
     """
 
     from scipy.interpolate import RegularGridInterpolator
@@ -1260,13 +1258,11 @@ def plot_pca_circuit_schematic_real_circuit(
     show_entanglers: bool = True,
     entangler_linewidth: float = 1.6,
 ):
-    """
-    Plot a circuit schematic annotated with PCA-based parameter scores.
+    """Plot a circuit schematic annotated with PCA-based parameter scores.
 
     Parameters:
-        qc: Qiskit quantum circuit to visualize, or any
-            compatible object exposing ``qc.data``,
-            ``qc.parameters``, ``qc.num_qubits``,
+        qc: Qiskit quantum circuit to visualize, or any compatible object
+            exposing ``qc.data``, ``qc.parameters``, ``qc.num_qubits``,
             and ``qc.find_bit``.
         analysis: Mapping returned by ``analyze_pca``.
         score_key: Influence metric used for coloring.
@@ -1280,15 +1276,16 @@ def plot_pca_circuit_schematic_real_circuit(
             the PCA score vector contains one additional score
             compared to the number of Qiskit circuit parameters.
         gamma_label: Optional label for the scaling parameter.
-        label_mode: Labeling scheme used for parameter boxes.
-            Supported values are:
-                - ``"index"``
-                - ``"theta"``
-                - ``"full"``
-                - ``"gate+index"``
-                - ``"gate"``
-                - ``"label"``
-                - ``"gate+label"``
+        label_mode: Labeling scheme used for parameter boxes. Supported values
+            are:
+
+            - ``"index"``
+            - ``"theta"``
+            - ``"full"``
+            - ``"gate+index"``
+            - ``"gate"``
+            - ``"label"``
+            - ``"gate+label"``
         show_entanglers: Whether to render entangling gates.
         entangler_linewidth: Line width for entangling
             connections.

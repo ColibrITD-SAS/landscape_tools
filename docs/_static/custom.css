@@ -104,8 +104,7 @@ html[data-theme="dark"] .highlight > pre {
   > dl:not(.method)
   .sig-name
   ~ *:not(:last-child):not(:nth-last-child(2)),
-.class.enum > dd > .attribute > dt > .property,
-.attribute .sig-name ~ * {
+.class.enum > dd > .attribute > dt > .property {
   display: none !important;
 }
 
