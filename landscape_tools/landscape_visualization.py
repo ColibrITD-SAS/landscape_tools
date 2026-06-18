@@ -1,18 +1,39 @@
 import re
-from typing import Any, Callable, Dict, TypeAlias
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    NotRequired,
+    Optional,
+    TypeAlias,
+    TypedDict,
+)
 
 import matplotlib.colors as colors
 import matplotlib.pyplot as plt
 import numpy as np
 from joblib import Parallel, delayed
+from matplotlib.axes import Axes
 from matplotlib.colors import LogNorm, Normalize
+from matplotlib.figure import Figure
 from numpy.typing import NDArray
+from qiskit import QuantumCircuit
+from qiskit.circuit import Clbit, Instruction, Qubit
 from sklearn.decomposition import PCA
 from tqdm.auto import tqdm
 
 ArrayLike: TypeAlias = NDArray[np.float64]
 ParameterVector: TypeAlias = NDArray[np.float64]
 LossFunction: TypeAlias = Callable[[ParameterVector], float]
+
+
+class _QiskitCircuitInstructionProtocol:
+    """This is needed because Qiskit dynamic type generation make the access to
+    relevant types a hellscape."""
+
+    operation: Instruction
+    qubits: tuple[Qubit, ...]
+    clbits: tuple[Clbit, ...]
 
 
 def loss_scan_1d(
@@ -23,16 +44,17 @@ def loss_scan_1d(
     end_points: tuple[float, float] | None = None,
     n_jobs: int = -1,
 ) -> None:
-    """
-    Evaluate and plot the loss function along a one-dimensional direction in parameter space.
+    """Evaluate and plot the loss function along a one-dimensional direction in
+    parameter space.
 
     Parameters:
         params: Reference parameter vector.
-        direction: Direction in parameter space used for the scan. It is normalized by its maximum absolute value.
+        direction: Direction in parameter space used for the scan. It is
+            normalized by its maximum absolute value.
         loss_function: Callable returning the loss for a given parameter vector.
-        n_steps: Number of scan points. Default is 200.
+        n_steps: Number of scan points.
         end_points: Bounds of the scan parameter. Default is (-π, π).
-        n_jobs: Number of parallel jobs used to evaluate the loss. Default is -1.
+        n_jobs: Number of parallel jobs used to evaluate the loss.
 
     Side effects:
         Saves the figure to ``figures/landscape1d.pdf`` and displays it.
@@ -58,7 +80,7 @@ def loss_scan_1d(
     # -------------------- Scan grid setup --------------------
 
     t_vals = np.linspace(*end_points, n_steps)
-    L = np.zeros_like(t_vals)
+    l = np.zeros_like(t_vals)
 
     # -------------------- Loss evaluation loop --------------------
 
@@ -69,20 +91,20 @@ def loss_scan_1d(
 
     #     L[k] = loss_function(param)
 
-    def evaluate_loss(t):
+    def evaluate_loss(t: float):
         param = param0 + t * d
         return loss_function(param)
 
-    L = Parallel(n_jobs=n_jobs)(
+    l = Parallel(n_jobs=n_jobs)(
         delayed(evaluate_loss)(t) for t in tqdm(t_vals, desc="1D scan progression")
     )
 
-    L = np.asarray(L)
+    l = np.asarray(l)
 
     # -------------------- Visualization --------------------
 
     plt.figure(figsize=(9, 6))
-    plt.plot(t_vals, L, "-o", ms=3, color="lightgreen")
+    plt.plot(t_vals, l, "-o", ms=3, color="lightgreen")
     plt.yscale("log")
     plt.xlabel("t")
     plt.ylabel("Loss")
@@ -104,23 +126,27 @@ def loss_scan_2d_3d(
     plot3D: bool = True,
     n_jobs: int = -1,
 ) -> None:
-    """
-    Evaluate and plot the loss function on a two-dimensional parameter plane.
+    """Evaluate and plot the loss function on a two-dimensional parameter plane.
 
     Parameters:
         params: Reference parameter vector.
-        direction1: First scan direction in parameter space. It is normalized by its maximum absolute value.
-        direction2: Second scan direction in parameter space. It is normalized by its maximum absolute value.
+        direction1: First scan direction in parameter space. It is normalized by
+            its maximum absolute value.
+        direction2: Second scan direction in parameter space. It is normalized
+            by its maximum absolute value.
         loss_function: Callable returning the loss for a given parameter vector.
         n_steps: Number of points per scan direction. Default is 100.
-        end_points_x: Bounds of the scan parameter along the first direction. Default is (-π, π).
-        end_points_y: Bounds of the scan parameter along the second direction. Default is (-π, π).
-        plot3D: Whether to generate a 3D visualization of the loss surface. Default is True.
-        n_jobs: Number of parallel jobs used to evaluate the loss. Default is -1.
+        end_points_x: Bounds of the scan parameter along the first direction.
+            Default is (-π, π).
+        end_points_y: Bounds of the scan parameter along the second direction.
+            Default is (-π, π).
+        plot3D: Whether to generate a 3D visualization of the loss surface.
+        n_jobs: Number of parallel jobs used to evaluate the loss.
 
     Side effects:
         Saves the 2D figure to ``figures/landscape2d.pdf`` and, if requested,
-        the 3D figure to ``figures/landscape3d.pdf``. Displays the generated figures.
+        the 3D figure to ``figures/landscape3d.pdf``. Displays the generated
+        figures.
     """
 
     # -------------------- Initialization --------------------
@@ -152,7 +178,7 @@ def loss_scan_2d_3d(
     t2_vals = np.linspace(*end_points_y, n_steps)
 
     T1, T2 = np.meshgrid(t1_vals, t2_vals, indexing="ij")
-    L = np.zeros_like(T1)
+    l = np.zeros_like(T1)
 
     # -------------------- Loss evaluation loop --------------------
 
@@ -181,13 +207,13 @@ def loss_scan_2d_3d(
         for i in tqdm(range(n_steps), desc="2D scan progression")
     )
 
-    L = np.vstack(rows)
+    l = np.vstack(rows)  # pyright: ignore[reportCallIssue, reportArgumentType]
 
     # -------------------- 2D visualization --------------------
 
     fig, ax = plt.subplots(figsize=(9, 6))
 
-    cp1 = ax.contourf(T1, T2, L, levels=50, cmap="viridis")
+    cp1 = ax.contourf(T1, T2, l, levels=50, cmap="viridis")
 
     ax.set_title("2D Loss Landscape")
     ax.set_xlabel("t1")
@@ -204,7 +230,7 @@ def loss_scan_2d_3d(
 
         fig = plt.figure(figsize=(9, 6))
         norm = colors.LogNorm(
-            vmin=np.percentile(L[L > 0], 1), vmax=np.percentile(L, 99)
+            vmin=np.percentile(l[l > 0], 1), vmax=np.percentile(l, 99)
         )
 
         ax1 = fig.add_subplot(111, projection="3d")
@@ -213,8 +239,10 @@ def loss_scan_2d_3d(
         _ = ax1.plot_surface(
             T1,
             T2,
-            L,
-            facecolors=plt.cm.viridis(norm(L)),
+            l,
+            facecolors=plt.cm.viridis(  # pyright: ignore[reportAttributeAccessIssue]
+                norm(l)
+            ),
             cmap="viridis",
             linewidth=0,
             antialiased=True,
@@ -228,12 +256,39 @@ def loss_scan_2d_3d(
         ax1.set_zlabel("Loss value")
 
         mappable = plt.cm.ScalarMappable(norm=norm, cmap="viridis")
-        mappable.set_array(L)
+        mappable.set_array(l)
         fig.colorbar(mappable, ax=ax1, shrink=0.5, aspect=10)
 
         plt.tight_layout()
         plt.savefig("figures/landscape3d.pdf")
         plt.show()
+
+
+class PCAResult(TypedDict):
+    X: np.ndarray
+    """PCA grid X coordinates"""
+    Y: np.ndarray
+    """PCA grid Y coordinates"""
+    Z: np.ndarray
+    """Loss values on the PCA grid"""
+    traj_xy: np.ndarray
+    """Trajectory projected onto the PCA plane"""
+    traj_z: Optional[np.ndarray]
+    """Loss values along the trajectory if compute_traj_loss is True, otherwise None"""
+    param_history: np.ndarray
+    """Parameter trajectory used to fit the PCA"""
+    param0: float
+    """Reference parameter vector used as the center of the scan"""
+    pca: PCA
+    """Fitted PCA object"""
+    explained_variance_ratio: np.ndarray
+    """Variance explained by each PCA component"""
+    components: np.ndarray
+    """PCA component vectors"""
+    x_range: tuple[float, float]
+    """Scan bounds along the PCA X axis"""
+    y_range: tuple[float, float]
+    """Scan bounds along the PCA Y axis"""
 
 
 def pca_loss_scan(
@@ -243,33 +298,23 @@ def pca_loss_scan(
     offset: float | tuple[float, float] = 0.5,
     compute_traj_loss: bool = True,
     n_jobs: int = -1,
-    backend="loky",
-) -> Dict[str, Any]:
-    """
-    Evaluate the loss function in the PCA subspace of an optimization trajectory.
+    backend: str = "loky",
+) -> PCAResult:
+    """Evaluate the loss function in the PCA subspace of an optimization trajectory.
 
     Parameters:
-        params_history: Array containing the successive parameter vectors of the optimization trajectory.
+        params_history: Array containing the successive parameter vectors of the
+            optimization trajectory.
         loss_function: Callable returning the loss for a given parameter vector.
-        n_steps: Number of grid points per PCA axis. Default is 200.
-        offset: Margin added to the PCA scan bounds. If a scalar is provided, it is converted to
-            (-abs(offset), abs(offset)). Default is 0.5.
-        compute_traj_loss: Whether to evaluate the loss along the original trajectory. Default is True.
-        n_jobs: Number of parallel jobs used to evaluate the loss. Default is -1.
-        backend: Joblib backend used for parallel loss evaluations. Default is "loky".
+        n_steps: Number of grid points per PCA axis.
+        offset: Margin added to the PCA scan bounds. If a scalar is provided, it
+            is converted to ``(-abs(offset), abs(offset))``.
+        compute_traj_loss: Whether to evaluate the loss along the original trajectory.
+        n_jobs: Number of parallel jobs used to evaluate the loss.
+        backend: Joblib backend used for parallel loss evaluations.
 
     Returns:
-        Mapping containing the PCA scan results and related metadata, including:
-            - X, Y: PCA grid coordinates
-            - Z: Loss values on the PCA grid
-            - traj_xy: Trajectory projected onto the PCA plane
-            - traj_z: Loss values along the trajectory if compute_traj_loss is True, otherwise None
-            - param_history: Parameter trajectory used to fit the PCA
-            - param0: Reference parameter vector used as the center of the scan
-            - pca: Fitted PCA object
-            - explained_variance_ratio: Variance explained by each PCA component
-            - components: PCA component vectors
-            - x_range, y_range: Scan bounds along the PCA axes
+        The PCA result
     """
 
     # -------------------- Load optimization records --------------------
@@ -290,7 +335,7 @@ def pca_loss_scan(
 
     # Use the final parameter vector as the center of the scan
     flat_center = param_history[-1].copy()
-    param0 = flat_center.copy()
+    param0: float = flat_center.copy()
 
     # Project the full trajectory onto the PCA plane
     centered_history = param_history - flat_center[None, :]
@@ -348,7 +393,7 @@ def pca_loss_scan(
         for iy in tqdm(range(n_steps), desc="Scan in PCA directions")
     )
 
-    Z = np.vstack(rows)
+    Z = np.vstack(rows)  # pyright: ignore[reportArgumentType, reportCallIssue]
 
     # -------------------- Trajectory loss evaluation --------------------
 
@@ -385,13 +430,13 @@ def pca_loss_scan(
 
 
 def plot_pca_loss_scan_2d(
-    scan_result: dict,
-    ax: plt.Axes | None = None,
+    scan_result: PCAResult,
+    ax: Axes | None = None,
     cmap: str = "viridis",
     contour: bool = False,
     contour_levels: int = 20,
     show_colorbar: bool = True,
-    trajectory_kwargs: dict | None = None,
+    trajectory_kwargs: dict[str, Any] | None = None,
 ):
     """
     Plot a 2D PCA loss landscape with the optimization trajectory.
@@ -443,7 +488,12 @@ def plot_pca_loss_scan_2d(
     default_traj_kwargs = dict(color="white", lw=2.0, marker="o", ms=3, alpha=0.95)
     default_traj_kwargs.update(trajectory_kwargs)
 
-    ax.plot(traj_xy[:, 0], traj_xy[:, 1], **default_traj_kwargs, label="Trajectory")
+    ax.plot(
+        traj_xy[:, 0],
+        traj_xy[:, 1],
+        label="Trajectory",
+        **default_traj_kwargs,  # pyright: ignore[reportArgumentType]
+    )
     ax.scatter(
         traj_xy[0, 0],
         traj_xy[0, 1],
@@ -467,19 +517,19 @@ def plot_pca_loss_scan_2d(
     ax.set_ylabel(f"PC2 ({100 * evr[1]:.2f}% variance)")
     ax.set_title(f"PCA Loss Landscape")
     ax.legend()
-    fig.tight_layout()
+    fig.tight_layout()  # pyright: ignore[reportAttributeAccessIssue]
     plt.savefig("figures/pcaLandscape2d.pdf")
 
     return fig, ax
 
 
 def plot_pca_loss_scan_3d(
-    scan_result: dict,
+    scan_result: PCAResult,
     cmap: str = "viridis",
     elev: float = 30,
     azim: float = -60,
     alpha_surface: float = 0.85,
-    trajectory_kwargs: dict | None = None,
+    trajectory_kwargs: dict[str, Any] | None = None,
 ):
     """
     Plot a 3D PCA loss landscape.
@@ -487,15 +537,13 @@ def plot_pca_loss_scan_3d(
     Parameters:
         scan_result: Mapping returned by ``pca_loss_scan``.
         cmap: Colormap used for the surface.
-        elev: Elevation angle of the view. Default is 30.
-        azim: Azimuth angle of the view. Default is -60.
-        alpha_surface: Surface transparency. Default is 0.85.
-        trajectory_kwargs: Optional keyword arguments for
-            trajectory plotting.
+        elev: Elevation angle of the view.
+        azim: Azimuth angle of the view.
+        alpha_surface: Surface transparency.
+        trajectory_kwargs: Optional keyword arguments for trajectory plotting.
 
     Notes:
-        - The figure is saved to
-        ``figures/pcaLandscape3d.pdf``.
+        - The figure is saved to ``figures/pcaLandscape3d.pdf``.
         - If ``LogNorm()`` is used for normalization,
         the values in ``Z`` must be strictly positive.
 
@@ -522,7 +570,6 @@ def plot_pca_loss_scan_3d(
         (Y[:, 0], X[0, :]),  # meshgrid ordering: Y first, then X
         Z,
         bounds_error=False,
-        fill_value=None,
     )
 
     traj_surface_z = interp(np.column_stack([traj_xy[:, 1], traj_xy[:, 0]]))
@@ -551,7 +598,7 @@ def plot_pca_loss_scan_3d(
         traj_xy[:, 0],
         traj_xy[:, 1],
         traj_surface_z,
-        **default_traj_kwargs,
+        **default_traj_kwargs,  # pyright: ignore[reportArgumentType]
         label="Trajectory",
     )
     ax1.scatter(
@@ -612,7 +659,7 @@ def plot_pca_loss_scan_3d(
         traj_xy[:, 0],
         traj_xy[:, 1],
         traj_surface_z_log,
-        **default_traj_kwargs,
+        **default_traj_kwargs,  # pyright: ignore[reportArgumentType]
     )
 
     ax2.scatter(
@@ -646,44 +693,131 @@ def plot_pca_loss_scan_3d(
     return fig, (ax1, ax2)
 
 
+class ParamEntry(TypedDict):
+    index: int
+    field: None
+    local_index: int
+    label: str
+    mean: float
+    std: float
+    range: float
+    path_length: float
+    global_abs_influence: float
+    global_sq_influence: float
+    global_path_influence: float
+    loading: NotRequired[float]
+    abs_loading: NotRequired[float]
+    sq_loading: NotRequired[float]
+    path_contribution_in_component: NotRequired[float]
+    correlation_with_component_score: NotRequired[Optional[float]]
+
+
+class PCASummary(TypedDict):
+    n_steps: int
+    n_parameters: int
+    n_components_analyzed: int
+    explained_variance_ratio: np.ndarray
+    cumulative_explained_variance: np.ndarray
+    effective_rank_90pct: int
+    effective_rank_95pct: int
+    dominant_component: int
+    most_influential_parameters: list[ParamEntry]
+    field_ranking: None
+
+
+class InfluenceMapInstance(TypedDict):
+    global_abs_influence: np.ndarray
+    global_sq_influence: np.ndarray
+    global_path_influence: np.ndarray
+    parameter_std: np.ndarray
+    parameter_range: np.ndarray
+    path_length_per_param: np.ndarray
+
+
+class InfluenceMap(TypedDict):
+    flat: InfluenceMapInstance
+
+
+class ComplementReport(TypedDict):
+    component_id: int
+    explained_variance_ratio: float
+    score_mean: float
+    score_std: float
+    score_min: float
+    score_max: float
+    top_abs_parameters: list[ParamEntry]
+    top_positive_parameters: list[ParamEntry]
+    top_negative_parameters: list[ParamEntry]
+    top_training_path_parameters: list[ParamEntry]
+    field_component_scores: None
+    component_vector: np.ndarray
+    component_map: np.ndarray
+    abs_component_map: np.ndarray
+    path_contribution_map: np.ndarray
+
+
+class RawResult(TypedDict):
+    components: np.ndarray
+    abs_loadings: np.ndarray
+    sq_loadings: np.ndarray
+    weights: np.ndarray
+    path_contrib_per_component: np.ndarray
+    global_abs_influence: np.ndarray
+    global_sq_influence: np.ndarray
+    global_path_influence: np.ndarray
+    param_mean: np.ndarray
+    param_std: np.ndarray
+    param_range: np.ndarray
+    path_length_per_param: np.ndarray
+    flat_parameter_labels: list[str]
+    parameter_labels: list[str]
+    block_slices: None
+    index_map: None
+
+
+class AnalysisResult(TypedDict):
+    summary: PCASummary
+    """Global PCA summary"""
+    scores: np.ndarray
+    """PCA scores along the trajectory"""
+    component_reports: list[ComplementReport]
+    """Per-component analyses"""
+    global_ranking: list[ParamEntry]
+    """Global parameter importance"""
+    field_ranking: None
+    """Always None in the flat-parameter analysis mode"""
+    correlations: np.ndarray
+    """Parameter–score correlations"""
+    influence_maps: InfluenceMap
+    """Parameter influence arrays"""
+    raw: RawResult
+    """Raw numerical quantities"""
+
+
 def analyze_pca(
-    scan_result: dict,
+    scan_result: PCAResult,
     n_components: int | None = None,
     top_k: int = 10,
     weight_mode: str = "variance",
     eps: float = 1e-12,
-):
-    """
-    Analyze a PCA applied to an optimization parameter trajectory.
+) -> AnalysisResult:
+    """Analyze a PCA applied to an optimization parameter trajectory.
 
     Parameters:
-        scan_result: Mapping containing PCA results and
-            the parameter trajectory.
+        scan_result: Mapping containing PCA results and the parameter trajectory.
         n_components: Number of PCA components to analyze.
-            Default is None.
-        top_k: Number of parameters retained in importance
-            rankings. Default is 10.
-        weight_mode: Weighting scheme used to aggregate
-            component influence across PCA components.
-            Supported values are:
-                - ``"variance"``: weights components according
-                to their explained variance ratio.
-                - ``"uniform"``: assigns equal weight to all
-                analyzed components.
-            Default is ``"variance"``.
+        top_k: Number of parameters retained in importance rankings.
+        weight_mode: Weighting scheme used to aggregate component influence
+            across PCA components. Supported values are:
+
+            - ``"variance"``: weights components according
+              to their explained variance ratio.
+            - ``"uniform"``: assigns equal weight to all
+              analyzed components.
         eps: Small constant used for numerical stability.
 
     Returns:
-        Mapping containing PCA interpretability results, including:
-            - summary: Global PCA summary
-            - scores: PCA scores along the trajectory
-            - component_reports: Per-component analyses
-            - global_ranking: Global parameter importance
-            - field_ranking: Always None in the flat-parameter
-            analysis mode
-            - correlations: Parameter–score correlations
-            - influence_maps: Parameter influence arrays
-            - raw: Raw numerical quantities
+        PCA interpretability results.
     """
 
     param_history = np.asarray(scan_result["param_history"])
@@ -705,7 +839,7 @@ def analyze_pca(
     if pca.components_.ndim != 2:
         raise ValueError("scan_result['pca'].components_ unexpected format.")
 
-    max_components = pca.components_.shape[0]
+    max_components: int = pca.components_.shape[0]
     if n_components is None:
         n_components = max_components
     n_components = min(n_components, max_components)
@@ -719,9 +853,9 @@ def analyze_pca(
     deltas = np.diff(flat_history, axis=0)
 
     param_mean = flat_history.mean(axis=0)
-    param_std = flat_history.std(axis=0, ddof=0)
-    param_range = flat_history.max(axis=0) - flat_history.min(axis=0)
-    path_length_per_param = np.sum(np.abs(deltas), axis=0)
+    param_std: np.ndarray = flat_history.std(axis=0, ddof=0)
+    param_range: np.ndarray = flat_history.max(axis=0) - flat_history.min(axis=0)
+    path_length_per_param: np.ndarray = np.sum(np.abs(deltas), axis=0)
 
     if weight_mode == "variance":
         weights = evr.copy()
@@ -734,8 +868,8 @@ def analyze_pca(
     abs_loadings = np.abs(components)  # (K, D)
     sq_loadings = components**2  # (K, D)
 
-    global_abs_influence = weights @ abs_loadings
-    global_sq_influence = weights @ sq_loadings
+    global_abs_influence: np.ndarray = weights @ abs_loadings
+    global_sq_influence: np.ndarray = weights @ sq_loadings
 
     path_contrib_per_component = []
     for k in range(n_components):
@@ -743,7 +877,7 @@ def analyze_pca(
         path_contrib_per_component.append(contrib_k)
     path_contrib_per_component = np.asarray(path_contrib_per_component)  # (K, D)
 
-    global_path_influence = weights @ path_contrib_per_component
+    global_path_influence: np.ndarray = weights @ path_contrib_per_component
 
     correlations = np.full((n_params, n_components), np.nan)
 
@@ -760,8 +894,8 @@ def analyze_pca(
                 continue
             correlations[j, k] = np.corrcoef(x, y)[0, 1]
 
-    def _make_param_entry(idx, comp_id=None):
-        entry = {
+    def _make_param_entry(idx: int, comp_id: Optional[int] = None) -> ParamEntry:
+        entry: ParamEntry = {
             "index": int(idx),
             "field": None,
             "local_index": int(idx),
@@ -839,7 +973,7 @@ def analyze_pca(
     effective_rank_90 = min(effective_rank_90, n_components)
     effective_rank_95 = min(effective_rank_95, n_components)
 
-    summary = {
+    summary: PCASummary = {
         "n_steps": int(n_steps),
         "n_parameters": int(n_params),
         "n_components_analyzed": int(n_components),
@@ -852,7 +986,7 @@ def analyze_pca(
         "field_ranking": None,
     }
 
-    influence_maps = {
+    influence_maps: InfluenceMap = {
         "flat": {
             "global_abs_influence": global_abs_influence.copy(),
             "global_sq_influence": global_sq_influence.copy(),
@@ -892,34 +1026,43 @@ def analyze_pca(
     }
 
 
+class PCAPlotResult(TypedDict):
+    summary: Figure
+    components: Figure
+
+
 def plot_pca_analysis(
-    analysis: dict,
+    analysis: AnalysisResult,
     n_top: int = 10,
     decimals: int = 4,
-    summary_figsize: tuple[int, int] = (14, 10),
-    component_figsize_per_row: tuple[int, int] = (18, 4),
+    summary_figsize: Optional[tuple[int, int]] = None,
+    component_figsize_per_row: Optional[tuple[int, int]] = None,
     max_label_length: int = 28,
-) -> dict:
-    """
-    Plot summaries of a PCA interpretability analysis.
+) -> PCAPlotResult:
+    """Plot summaries of a PCA interpretability analysis.
 
-    Parameters:
+    Args:
         analysis: Mapping returned by ``analyze_pca``.
-        n_top: Number of top entries shown in each plot. Default is 10.
-        decimals: Number of decimals used for axis formatting. Default is 4.
+        n_top: Number of top entries shown in each plot.
+        decimals: Number of decimals used for axis formatting.
         summary_figsize: Figure size for the global summary. Default is (14, 10).
-        component_figsize_per_row: Figure size per row for component plots. Default is (18, 4).
-        max_label_length: Maximum length of labels before truncation. Default is 28.
+        component_figsize_per_row: Figure size per row for component plots.
+            Default is (18, 4).
+        max_label_length: Maximum length of labels before truncation.
 
     Returns:
         Mapping containing the generated figures:
             - summary: Global PCA summary figure
             - components: Component-level analysis figure
     """
+    if summary_figsize is None:
+        summary_figsize = (14, 10)
+    if component_figsize_per_row is None:
+        component_figsize_per_row = (18, 4)
 
     from matplotlib.ticker import FuncFormatter
 
-    def shorten(label, max_len: int | None = None):
+    def shorten(label: str, max_len: int | None = None):
         if max_len is None:
             max_len = max_label_length
         label = str(label)
@@ -927,10 +1070,10 @@ def plot_pca_analysis(
             return label
         return label[: max_len - 3] + "..."
 
-    def plain_formatter(x, pos):
+    def plain_formatter(x: float, pos: Any):
         return f"{x:.{decimals}f}"
 
-    def apply_plain_format(ax, axis="x"):
+    def apply_plain_format(ax: Axes, axis: str = "x"):
         formatter = FuncFormatter(plain_formatter)
         if axis == "x":
             ax.xaxis.set_major_formatter(formatter)
@@ -940,7 +1083,7 @@ def plot_pca_analysis(
             ax.xaxis.set_major_formatter(formatter)
             ax.yaxis.set_major_formatter(formatter)
 
-    def safe_log_scale(ax, values, axis="x"):
+    def safe_log_scale(ax: Axes, values: np.ndarray | list[float], axis: str = "x"):
         """
         Apply log scale only if all displayed values are strictly positive.
         This avoids matplotlib warnings/errors when values contain zeros.
@@ -1056,12 +1199,21 @@ def plot_pca_analysis(
         labels_c = [shorten(item["label"]) for item in top_items][::-1]
 
         loadings = np.array(
-            [item["loading"] for item in top_items][::-1],
+            [item["loading"] if "loading" in item else np.nan for item in top_items][
+                ::-1
+            ],
             dtype=float,
         )
 
         path_c = np.array(
-            [item["path_contribution_in_component"] for item in top_items][::-1],
+            [
+                (
+                    item["path_contribution_in_component"]
+                    if "path_contribution_in_component" in item
+                    else np.nan
+                )
+                for item in top_items
+            ][::-1],
             dtype=float,
         )
 
@@ -1094,8 +1246,8 @@ def plot_pca_analysis(
 
 
 def plot_pca_circuit_schematic_real_circuit(
-    qc,
-    analysis: dict,
+    qc: QuantumCircuit,
+    analysis: AnalysisResult,
     score_key: str = "global_sq_influence",
     cmap: str = "viridis",
     box_width: float = 0.55,
@@ -1147,6 +1299,8 @@ def plot_pca_circuit_schematic_real_circuit(
     Saved Files:
         - ``figures/circuitpcainfluence.pdf``
     """
+    if title is None:
+        title = ""
 
     import matplotlib.patheffects as pe
     from matplotlib.cm import get_cmap
@@ -1180,7 +1334,9 @@ def plot_pca_circuit_schematic_real_circuit(
             flat_labels = list(analysis["raw"]["flat_parameter_labels"])
         elif "parameter_labels" in analysis["raw"]:
             parameter_labels = analysis["raw"]["parameter_labels"]
-            if not isinstance(parameter_labels, dict):
+            if not isinstance(
+                parameter_labels, dict
+            ):  # pyright: ignore[reportUnnecessaryIsInstance]
                 flat_labels = list(parameter_labels)
 
     # ------------------------------------------------------------------
@@ -1251,17 +1407,26 @@ def plot_pca_circuit_schematic_real_circuit(
     # ------------------------------------------------------------------
     # 4) Helpers
     # ------------------------------------------------------------------
-    def unpack_instruction(inst):
+    def unpack_instruction(
+        inst: (
+            _QiskitCircuitInstructionProtocol
+            | tuple[Instruction, tuple[Qubit, ...], tuple[Clbit, ...]]
+        ),
+    ):
         if hasattr(inst, "operation"):
+            if TYPE_CHECKING:
+                assert isinstance(inst, _QiskitCircuitInstructionProtocol)
             op = inst.operation
             qargs = inst.qubits
             cargs = inst.clbits
         else:
+            if TYPE_CHECKING:
+                assert isinstance(inst, tuple)
             op, qargs, cargs = inst
 
         return op, qargs, cargs
 
-    def extract_param_names(op):
+    def extract_param_names(op: Instruction):
         names = []
 
         for p in getattr(op, "params", []):
@@ -1282,7 +1447,7 @@ def plot_pca_circuit_schematic_real_circuit(
 
         return out
 
-    def pretty_gate_name(gname):
+    def pretty_gate_name(gname: str):
         mapping = {
             "rx": "Rx",
             "ry": "Ry",
@@ -1308,7 +1473,7 @@ def plot_pca_circuit_schematic_real_circuit(
 
         return mapping.get(str(gname).lower(), str(gname).upper())
 
-    def fallback_theta_from_name(name):
+    def fallback_theta_from_name(name: str):
         m = re.search(r"\[(\d+)\]$", name)
 
         if m:
@@ -1317,7 +1482,7 @@ def plot_pca_circuit_schematic_real_circuit(
 
         return name, name
 
-    def label_from_item(param_name, gate_name=None):
+    def label_from_item(param_name: str, gate_name: Optional[str] = None):
         gate_txt = pretty_gate_name(gate_name) if gate_name is not None else ""
         idx_local = index_by_param.get(param_name, None)
 
@@ -1814,7 +1979,7 @@ def perform_pca_and_analysis(
     n_steps: int,
     offset: float | tuple[float, float],
     n_top: int,
-    circuit,
+    circuit: QuantumCircuit,
     n_jobs: int = -1,
 ):
     """
@@ -1885,9 +2050,8 @@ def perform_pca_and_analysis(
 # -----------------------------------------------------------------------------
 
 
-def random_mixed_directions(n):
-    """
-    Generate two random directions in parameter space.
+def random_mixed_directions(n: int):
+    """Generate two random directions in parameter space.
 
     Parameters:
         n: Total parameter dimension.

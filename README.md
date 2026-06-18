@@ -1,4 +1,33 @@
-# Landscape Tools
+<p align="center">
+  <a href="https://github.com/ColibrITD-SAS/landscape_tools/blob/main/LICENSE">
+    <img src="https://img.shields.io/github/license/ColibrITD-SAS/landscape_tools?label=license&style=flat-square" alt="License">
+  </a>
+  <a href="https://github.com/ColibrITD-SAS/landscape_tools/actions/workflows/doc.yml">
+    <img src="https://github.com/ColibrITD-SAS/landscape_tools/actions/workflows/doc.yml/badge.svg" alt="Documentation">
+  </a>
+  <a href="https://github.com/ColibrITD-SAS/landscape_tools/actions/workflows/pypi.yml">
+    <img src="https://github.com/ColibrITD-SAS/landscape_tools/actions/workflows/pypi.yml/badge.svg" alt="PyPI workflow">
+  </a>
+  <a href="https://pypi.org/project/landscape-tools/">
+    <img src="https://img.shields.io/pypi/v/landscape-tools?label=release&style=flat-square" alt="PyPI version">
+  </a>
+  <a href="https://github.com/ColibrITD-SAS/landscape_tools/stargazers">
+    <img src="https://img.shields.io/github/stars/ColibrITD-SAS/landscape_tools?style=flat-square&logo=github" alt="GitHub stars">
+  </a>
+  <a href="https://pypi.org/project/landscape-tools/">
+    <img src="https://img.shields.io/pypi/pyversions/landscape-tools?label=python&style=flat-square&logo=python" alt="Python versions">
+  </a>
+</p>
+
+![alt text](Designer.png)
+
+# About the library
+
+**Landscape Tools** is a Python library designed to visualize, characterize, and analyze the loss landscapes of variational quantum algorithms. It provides utilities for one-dimensional, two-dimensional, and three-dimensional loss scans, PCA-based landscape projections, optimization trajectory visualization, and interpretable parameter-sensitivity analysis directly on quantum circuits. The library also includes tools for studying barren plateaus through variance-based scaling analyses over circuit depth, number of qubits, observables, and Pauli-string padding strategies. Built with quantum machine learning experiments in mind, Landscape Tools helps researchers diagnose trainability issues, inspect optimization dynamics, and better understand how variational quantum ansätze behave across parameter space.
+
+<p align="center">
+  <img src="ezgif.com-animated-gif-maker.gif" alt="Landscape Tools demo" width="800">
+</p>
 
 ## Installation
 
@@ -7,11 +36,10 @@ pip install landscape_tools
 ```
 
 ```python
-from landscape_tools import landscape_visualization as lv
-from landscape_tools import barren_plateaus as bp
+from landscape_tools import landscape_visualization, barren_plateaus
 ```
 
-## Landscape Characterization
+<!-- ## Landscape Characterization
 
 This module provides utilities to analyze and visualize the optimization
 landscape of variational quantum algorithms (VQAs).
@@ -48,4 +76,4 @@ wrapped_loss = lambda p: cost_function(
     circuit=my_circuit,
     hamiltonian=my_hamiltonian,
 )
-```
+``` -->
