@@ -25,10 +25,8 @@ jobs:
           echo "SPHINX_GITHUB_CHANGELOG_TOKEN=${{secrets.DOC_GH_API_TOKEN}}" > .env
           sphinx-build -b html docs build
       - name: Publish
-        uses: cloudflare/pages-action@1
+        uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          projectName: mpqp
-          branch: main
-          directory: build
+          command: pages deploy build --project-name=landscape-tools
