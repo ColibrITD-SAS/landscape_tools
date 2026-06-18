@@ -1,5 +1,3 @@
-.wrangler/ 
-
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]
@@ -44,6 +42,7 @@ pip-delete-this-directory.txt
 
 # Sphinx documentation
 docs/_build/
+.wrangler/
 
 # Jupyter Notebook
 .ipynb_checkpoints
