@@ -1,14 +1,14 @@
 import re
+from typing import Any, Callable, Dict, TypeAlias
+
 import matplotlib.colors as colors
 import matplotlib.pyplot as plt
 import numpy as np
+from joblib import Parallel, delayed
 from matplotlib.colors import LogNorm, Normalize
 from numpy.typing import NDArray
 from sklearn.decomposition import PCA
 from tqdm.auto import tqdm
-from typing import TypeAlias
-from joblib import Parallel, delayed
-from typing import Any, Callable, Dict
 
 ArrayLike: TypeAlias = NDArray[np.float64]
 ParameterVector: TypeAlias = NDArray[np.float64]
@@ -24,14 +24,18 @@ def loss_scan_1d(
     n_jobs: int = -1,
 ) -> None:
     """
-    Evaluate the loss function along a one-dimensional direction in parameter space.
+    Evaluate and plot the loss function along a one-dimensional direction in parameter space.
 
     Parameters:
-        params: Parameter vectors organized by component.
-        direction: Direction in parameter space used for the scan.
+        params: Reference parameter vector.
+        direction: Direction in parameter space used for the scan. It is normalized by its maximum absolute value.
         loss_function: Callable returning the loss for a given parameter vector.
         n_steps: Number of scan points. Default is 200.
         end_points: Bounds of the scan parameter. Default is (-π, π).
+        n_jobs: Number of parallel jobs used to evaluate the loss. Default is -1.
+
+    Side effects:
+        Saves the figure to ``figures/landscape1d.pdf`` and displays it.
     """
 
     # -------------------- Initialization --------------------
@@ -101,17 +105,22 @@ def loss_scan_2d_3d(
     n_jobs: int = -1,
 ) -> None:
     """
-    Evaluate the loss function on a two-dimensional parameter plane.
+    Evaluate and plot the loss function on a two-dimensional parameter plane.
 
     Parameters:
-        params: Parameter vectors organized by component.
-        direction1: First scan direction in parameter space.
-        direction2: Second scan direction in parameter space.
+        params: Reference parameter vector.
+        direction1: First scan direction in parameter space. It is normalized by its maximum absolute value.
+        direction2: Second scan direction in parameter space. It is normalized by its maximum absolute value.
         loss_function: Callable returning the loss for a given parameter vector.
         n_steps: Number of points per scan direction. Default is 100.
         end_points_x: Bounds of the scan parameter along the first direction. Default is (-π, π).
         end_points_y: Bounds of the scan parameter along the second direction. Default is (-π, π).
         plot3D: Whether to generate a 3D visualization of the loss surface. Default is True.
+        n_jobs: Number of parallel jobs used to evaluate the loss. Default is -1.
+
+    Side effects:
+        Saves the 2D figure to ``figures/landscape2d.pdf`` and, if requested,
+        the 3D figure to ``figures/landscape3d.pdf``. Displays the generated figures.
     """
 
     # -------------------- Initialization --------------------
@@ -240,25 +249,27 @@ def pca_loss_scan(
     Evaluate the loss function in the PCA subspace of an optimization trajectory.
 
     Parameters:
-        params_history: Array containing successive optimization records.
+        params_history: Array containing the successive parameter vectors of the optimization trajectory.
         loss_function: Callable returning the loss for a given parameter vector.
         n_steps: Number of grid points per PCA axis. Default is 200.
-        offset: Margin added to the PCA scan bounds. Default is 0.5.
+        offset: Margin added to the PCA scan bounds. If a scalar is provided, it is converted to
+            (-abs(offset), abs(offset)). Default is 0.5.
         compute_traj_loss: Whether to evaluate the loss along the original trajectory. Default is True.
+        n_jobs: Number of parallel jobs used to evaluate the loss. Default is -1.
+        backend: Joblib backend used for parallel loss evaluations. Default is "loky".
 
     Returns:
         Mapping containing the PCA scan results and related metadata, including:
             - X, Y: PCA grid coordinates
             - Z: Loss values on the PCA grid
             - traj_xy: Trajectory projected onto the PCA plane
-            - traj_z: Loss values along the trajectory (if computed)
-            - param_history: Parameter trajectory
-            - param0: Reference parameter vector
+            - traj_z: Loss values along the trajectory if compute_traj_loss is True, otherwise None
+            - param_history: Parameter trajectory used to fit the PCA
+            - param0: Reference parameter vector used as the center of the scan
             - pca: Fitted PCA object
-            - explained_variance_ratio: Variance explained by each component
+            - explained_variance_ratio: Variance explained by each PCA component
             - components: PCA component vectors
-            - x_range, y_range: Scan bounds
-            - records: Raw optimization records
+            - x_range, y_range: Scan bounds along the PCA axes
     """
 
     # -------------------- Load optimization records --------------------
@@ -394,6 +405,12 @@ def plot_pca_loss_scan_2d(
         show_colorbar: Whether to display a colorbar. Default is True.
         trajectory_kwargs: Optional keyword arguments for trajectory plotting.
 
+    Notes:
+        - The figure is saved to
+          ``figures/pcaLandscape2d.pdf``.
+        - If ``LogNorm()`` is used for normalization,
+          the values in ``Z`` must be strictly positive.
+
     Returns:
         fig: Figure containing the plot.
         ax: Axis on which the plot is drawn.
@@ -458,12 +475,10 @@ def plot_pca_loss_scan_2d(
 
 def plot_pca_loss_scan_3d(
     scan_result: dict,
-    ax: plt.Axes | None = None,
     cmap: str = "viridis",
     elev: float = 30,
     azim: float = -60,
     alpha_surface: float = 0.85,
-    show_trajectory: bool = True,
     trajectory_kwargs: dict | None = None,
 ):
     """
@@ -471,35 +486,35 @@ def plot_pca_loss_scan_3d(
 
     Parameters:
         scan_result: Mapping returned by ``pca_loss_scan``.
-        ax: 3D axis on which to draw the plot.
         cmap: Colormap used for the surface.
         elev: Elevation angle of the view. Default is 30.
         azim: Azimuth angle of the view. Default is -60.
         alpha_surface: Surface transparency. Default is 0.85.
-        show_trajectory: Whether to display the optimization trajectory. Default is True.
-        trajectory_kwargs: Optional keyword arguments for trajectory plotting.
+        trajectory_kwargs: Optional keyword arguments for
+            trajectory plotting.
+
+    Notes:
+        - The figure is saved to
+        ``figures/pcaLandscape3d.pdf``.
+        - If ``LogNorm()`` is used for normalization,
+        the values in ``Z`` must be strictly positive.
 
     Returns:
         fig: Figure containing the plot.
-        ax: Axis on which the plot is drawn.
+        axes: Tuple ``(ax1, ax2)`` containing the main
+            PCA landscape axis and the log-scale surface axis.
     """
 
     from scipy.interpolate import RegularGridInterpolator
 
-    if ax is None:
-        fig = plt.figure(figsize=(16, 6))
-        ax1 = fig.add_subplot(121, projection="3d")
-        ax2 = fig.add_subplot(122, projection="3d")
-    else:
-        fig = ax.figure
-        ax1 = ax
-        ax2 = None
+    fig = plt.figure(figsize=(16, 6))
+    ax1 = fig.add_subplot(121, projection="3d")
+    ax2 = fig.add_subplot(122, projection="3d")
 
     X = scan_result["X"]
     Y = scan_result["Y"]
     Z = scan_result["Z"]
     traj_xy = scan_result["traj_xy"]
-    traj_z = scan_result["traj_z"]
     evr = scan_result["explained_variance_ratio"]
 
     # --- Project trajectory onto the PCA loss surface ---
@@ -526,46 +541,43 @@ def plot_pca_loss_scan_3d(
 
     fig.colorbar(surf, ax=ax1, shrink=0.7, pad=0.1, label="Loss value")
 
-    if show_trajectory and traj_z is not None:
-        if trajectory_kwargs is None:
-            trajectory_kwargs = {}
+    if trajectory_kwargs is None:
+        trajectory_kwargs = {}
 
-        default_traj_kwargs = dict(color="k", lw=2.5, marker="o", ms=4, alpha=1.0)
-        default_traj_kwargs.update(trajectory_kwargs)
+    default_traj_kwargs = dict(color="k", lw=2.5, marker="o", ms=4, alpha=1.0)
+    default_traj_kwargs.update(trajectory_kwargs)
 
-        ax1.plot(
-            traj_xy[:, 0],
-            traj_xy[:, 1],
-            traj_surface_z,
-            **default_traj_kwargs,
-            label="Trajectory",
-        )
-        ax1.scatter(
-            traj_xy[0, 0],
-            traj_xy[0, 1],
-            traj_surface_z[0],
-            c="cyan",
-            s=55,
-            edgecolors="k",
-            label="Start",
-        )
-        ax1.scatter(
-            traj_xy[-1, 0],
-            traj_xy[-1, 1],
-            traj_surface_z[-1],
-            c="red",
-            s=65,
-            edgecolors="k",
-            label="End",
-        )
+    ax1.plot(
+        traj_xy[:, 0],
+        traj_xy[:, 1],
+        traj_surface_z,
+        **default_traj_kwargs,
+        label="Trajectory",
+    )
+    ax1.scatter(
+        traj_xy[0, 0],
+        traj_xy[0, 1],
+        traj_surface_z[0],
+        c="cyan",
+        s=55,
+        edgecolors="k",
+        label="Start",
+    )
+    ax1.scatter(
+        traj_xy[-1, 0],
+        traj_xy[-1, 1],
+        traj_surface_z[-1],
+        c="red",
+        s=65,
+        edgecolors="k",
+        label="End",
+    )
 
     ax1.set_xlabel(f"PC1 ({100 * evr[0]:.2f}% variance)")
     ax1.set_ylabel(f"PC2 ({100 * evr[1]:.2f}% variance)")
     ax1.set_title(f"PCA Loss Landscape")
     ax1.view_init(elev=elev, azim=azim)
-
-    if show_trajectory and traj_z is not None:
-        ax1.legend()
+    ax1.legend()
 
     Z_eps = np.maximum(Z, 1e-14)
     Z_log = np.log(Z_eps)
@@ -645,11 +657,21 @@ def analyze_pca(
     Analyze a PCA applied to an optimization parameter trajectory.
 
     Parameters:
-        scan_result: Mapping containing PCA results and the parameter trajectory.
-        n_components: Number of PCA components to analyze. Default is None.
-        top_k: Number of parameters retained in importance rankings. Default is 10.
-        weight_mode: Weighting scheme for aggregating component influence. Default is "variance".
-        eps: Small constant for numerical stability.
+        scan_result: Mapping containing PCA results and
+            the parameter trajectory.
+        n_components: Number of PCA components to analyze.
+            Default is None.
+        top_k: Number of parameters retained in importance
+            rankings. Default is 10.
+        weight_mode: Weighting scheme used to aggregate
+            component influence across PCA components.
+            Supported values are:
+                - ``"variance"``: weights components according
+                to their explained variance ratio.
+                - ``"uniform"``: assigns equal weight to all
+                analyzed components.
+            Default is ``"variance"``.
+        eps: Small constant used for numerical stability.
 
     Returns:
         Mapping containing PCA interpretability results, including:
@@ -657,7 +679,8 @@ def analyze_pca(
             - scores: PCA scores along the trajectory
             - component_reports: Per-component analyses
             - global_ranking: Global parameter importance
-            - field_ranking: Aggregated importance per parameter block
+            - field_ranking: Always None in the flat-parameter
+            analysis mode
             - correlations: Parameter–score correlations
             - influence_maps: Parameter influence arrays
             - raw: Raw numerical quantities
@@ -1089,28 +1112,45 @@ def plot_pca_circuit_schematic_real_circuit(
     Plot a circuit schematic annotated with PCA-based parameter scores.
 
     Parameters:
-        qc: Quantum circuit to visualize.
-        analysis: Mapping returned by analyze_pca.
-        field_key: Deprecated / ignored. Kept only for backward compatibility.
+        qc: Qiskit quantum circuit to visualize, or any
+            compatible object exposing ``qc.data``,
+            ``qc.parameters``, ``qc.num_qubits``,
+            and ``qc.find_bit``.
+        analysis: Mapping returned by ``analyze_pca``.
         score_key: Influence metric used for coloring.
         cmap: Colormap used to map scores to colors.
         box_width: Width of parameter boxes.
         box_height: Height of parameter boxes.
         show_values: Whether to display numerical scores.
         title: Optional figure title.
-        show_gamma: Whether to display the global scaling parameter.
+        show_gamma: Whether to display the global scaling
+            parameter. The gamma parameter is shown only if
+            the PCA score vector contains one additional score
+            compared to the number of Qiskit circuit parameters.
         gamma_label: Optional label for the scaling parameter.
-        label_mode: Labeling scheme for parameter boxes.
+        label_mode: Labeling scheme used for parameter boxes.
+            Supported values are:
+                - ``"index"``
+                - ``"theta"``
+                - ``"full"``
+                - ``"gate+index"``
+                - ``"gate"``
+                - ``"label"``
+                - ``"gate+label"``
         show_entanglers: Whether to render entangling gates.
-        entangler_linewidth: Line width for entangling connections.
+        entangler_linewidth: Line width for entangling
+            connections.
 
     Returns:
         matplotlib.figure.Figure
+
+    Saved Files:
+        - ``figures/circuitpcainfluence.pdf``
     """
 
+    import matplotlib.patheffects as pe
     from matplotlib.cm import get_cmap
     from matplotlib.patches import Rectangle
-    import matplotlib.patheffects as pe
 
     # ------------------------------------------------------------------
     # 1) Get flat PCA scores
@@ -1778,18 +1818,22 @@ def perform_pca_and_analysis(
     n_jobs: int = -1,
 ):
     """
-    Run a PCA-based loss landscape analysis pipeline.
+    Run the full PCA-based loss landscape and interpretability analysis pipeline.
 
     Parameters:
-        params_history: Ndarray containing optimization records.
+        params_history: Parameter trajectory used to fit the PCA.
         loss_function: Callable returning the loss for a given parameter vector.
         n_steps: Number of grid points per PCA axis.
         offset: Margin added to the PCA scan bounds.
         n_top: Number of top entries shown in analysis plots.
-        isa_circuits: Mapping of parameter blocks to quantum circuits.
+        circuit: Quantum circuit used for the PCA influence schematic.
+        n_jobs: Number of parallel jobs used during loss evaluations. Default is -1.
 
     Returns:
         Mapping returned by ``analyze_pca``.
+
+    Side effects:
+        Generates and displays several plots, and saves some figures under ``figures/``.
     """
 
     print("\n[PCA] Starting PCA-based loss landscape scan...")
