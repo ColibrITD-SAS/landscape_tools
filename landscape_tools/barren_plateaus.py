@@ -85,7 +85,8 @@ def extend_with_last(
 
     Args:
         lst: Input sequence to extend. Must not be empty.
-        target_len: Desired length of the output list.
+        target_len: Desired minimum length of the output list. If target_len is
+            smaller than len(lst), the original list is returned unchanged.
 
     Returns:
         A list extended to ``target_len`` by repeating the last element.
@@ -172,7 +173,7 @@ def bootstrap_var_diagnostic_1d(
     rel_err_warn: float = 0.05,
     rel_err_fail: float = 0.10,
 ) -> dict[str, Any]:
-    """Perform a bootstrap diagnostic for a single standard deviation estimate.
+    """Perform a bootstrap diagnostic for a single variance estimate.
 
     Args:
         var: Reference estimate of the variance of the loss.
@@ -285,9 +286,10 @@ def adaptive_sampling_var(
             If provided, the algorithm stops when either:
             - ``relative_error <= rel_err_target``, or
             - ``absolute_error <= abs_err_target``.
-
             This is particularly useful when the standard deviation is very
             small and relative error becomes overly strict.
+        n_jobs: Number of parallel jobs used when drawing new samples.
+            Passed to joblib.Parallel. A value of -1 usually uses all available cores.
 
     Returns:
         A the three following elements: an array containing all collected
@@ -677,7 +679,7 @@ def plot_joint_scaling_padding(
     function of system size and circuit depth for a given padding strategy.
 
     Args:
-        tracked: Sequence of tracked standard deviation values.
+        tracked: Sequence of tracked variance values.
         A_ext: Extended sequence associated with the primary scan axis.
         B_ext: Extended sequence associated with the secondary grouping axis.
         N_qubits: Sequence of qubit counts considered in the scan.
@@ -685,7 +687,6 @@ def plot_joint_scaling_padding(
         padding_type: Identifier of the padding strategy used.
         padding_latex: Mapping from padding strategy identifiers to LaTeX labels.
         Ansatz: Name of the variational ansatz displayed in the figure.
-        use_state_vector: Whether state-vector simulation is used.
         rel_err_target: Target relative error displayed in the figure annotations.
     """
 
@@ -769,7 +770,7 @@ class AnalysisResult(TypedDict):
     metadata: list[Result]
     N_qubits_extended: list[int]
     N_layers_extended: list[int]
-    padding_type: PaddingType
+    padding_type: PaddingType | None
 
 
 class CostFunctionContext(TypedDict):
@@ -834,9 +835,8 @@ def barren_plateaus_analysis(
             builder.
 
     Returns:
-        Dictionary containing the variance estimates, diagnostics, and metadata
-        produced by the selected analysis. The exact structure depends on the
-        selected analysis_type.
+        Results produced by the selected analysis type. The returned objects contain
+        variance estimates and metadata such as qubit count, layer count and observable.
     """
 
     # -------------------- Validation --------------------
