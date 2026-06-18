@@ -13,7 +13,7 @@ Check each of the pages to have an overview.
 
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 1
    :caption: Contents:
 
    barren_plateaus
