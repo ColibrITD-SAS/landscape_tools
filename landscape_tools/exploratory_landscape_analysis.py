@@ -1,26 +1,25 @@
+from typing import Callable, Optional
+
 import numpy as np
-from math import log
-from collections import defaultdict
-from tqdm.auto import tqdm
 from joblib import Parallel, delayed
+from tqdm.auto import tqdm
 
 
 def ela_difficulty(
-    sample_once,
-    loss_value,
-    N_max=1024,
-    max_pairs=1024,
-    compute_hessian=None,
-    n_curvature_points=128,
-    curvature_dims=None,
-    bounds=None,
-    seed=None,
-    verbose=True,
-    return_features=True,
-    n_jobs = -1
+    sample_once: Callable[[], list[float]],
+    loss_value: Callable[[np.ndarray], float],
+    N_max: int = 1024,
+    max_pairs: int = 1024,
+    compute_hessian: Optional[Callable[[np.ndarray, np.ndarray], float]] = None,
+    n_curvature_points: int = 128,
+    curvature_dims: Optional[int] = None,
+    bounds: Optional[tuple[np.typing.ArrayLike, np.typing.ArrayLike]] = None,
+    seed: Optional[int] = None,
+    verbose: bool = True,
+    return_features: bool = True,
+    n_jobs: int = -1,
 ):
-    """
-    Compute ELA difficulty scores based on:
+    """Compute ELA difficulty scores based on:
     - convexity tests
     - finite-difference curvature tests
     This function performs global sampling only once and reuses:
@@ -30,41 +29,24 @@ def ela_difficulty(
     - parameter scale
     - random generator
 
-    Parameters
-    ----------
-    sample_once : callable
-        Function returning one parameter vector theta.
-    loss_value : callable
-        Function returning scalar loss at theta.
-    N : int
-        Number of global samples.
-    max_pairs : int
-        Maximum number of pairs for convexity test.
-    n_curvature_points : int
-        Number of points used for curvature estimation.
-    curvature_dims : int or None
-        Number of dimensions used for curvature.
-        If None, all dimensions are used.
-    epsilon : float
-        Relative finite-difference step.
-        For angles, h = epsilon * angle_period.
-    bounds : tuple or None
-        Optional bounds (lower, upper).
-        If None, bounds are inferred from global samples.
-    seed : int or None
-        Random seed.
-    verbose : bool
-        Print progress and diagnostics.
-    return_features : bool
-        If True, returns detailed features.
+    Args:
+        sample_once: Function returning one parameter vector theta.
+        loss_value: Function returning scalar loss at theta.
+        N: Number of global samples.
+        max_pairs: Maximum number of pairs for convexity test.
+        n_curvature_points: Number of points used for curvature estimation.
+        curvature_dims: Number of dimensions used for curvature.
+            If ``None``, all dimensions are used.
+        epsilon: Relative finite-difference step.
+            For angles, h = epsilon * angle_period.
+        bounds: Optional bounds (lower, upper).
+            If ``None``, bounds are inferred from global samples.
+        seed: Random seed.
+        verbose: Print progress and diagnostics.
+        return_features: If True, returns detailed features.
 
-    Returns
-    -------
-    If return_features=True:
-        scores, features
-
-    If return_features=False:
-        scores
+    Returns:
+        scores, (and features If return_features is ``True``)
     """
 
     rng = np.random.default_rng(seed)
@@ -73,7 +55,7 @@ def ela_difficulty(
     # Helpers
     # ============================================================
 
-    def safe_eval(theta):
+    def safe_eval(theta: np.ndarray):
         try:
             y = loss_value(theta)
             if np.isfinite(y):
@@ -119,19 +101,18 @@ def ela_difficulty(
         current_batch_size = min(batch_size, remaining)
 
         theta_batch = [
-            np.asarray(sample_once(), dtype=float)
-            for _ in range(current_batch_size)
+            np.asarray(sample_once(), dtype=float) for _ in range(current_batch_size)
         ]
 
         y_batch = Parallel(n_jobs=n_jobs)(
-            delayed(safe_eval)(theta)
-            for theta in theta_batch
+            delayed(safe_eval)(theta) for theta in theta_batch
         )
 
         for theta, y in zip(theta_batch, y_batch):
             if len(ys) >= N_max:
                 break
 
+            assert y is not None
             if np.isfinite(y) and np.all(np.isfinite(theta)):
                 thetas.append(theta)
                 ys.append(y)
@@ -157,7 +138,9 @@ def ela_difficulty(
         current_y_scale = max(q90 - q10, 1e-12)
 
         if previous_y_scale is not None:
-            relative_change = abs(current_y_scale - previous_y_scale) / max(previous_y_scale, 1e-12)
+            relative_change = abs(current_y_scale - previous_y_scale) / max(
+                previous_y_scale, 1e-12
+            )
 
             if verbose:
                 tqdm.write(
@@ -300,6 +283,7 @@ def ela_difficulty(
     )
 
     for ym, linear_value in zip(ym_values, linear_values):
+        assert ym is not None
         if np.isfinite(ym):
             convex_gaps.append(ym - linear_value)
 
@@ -310,7 +294,7 @@ def ela_difficulty(
 
     normalized_gaps = convex_gaps / y_scale
 
-    eps = 1e-4 # on tolère une violation jusqu’à 0.01% de l’échelle typique de la loss
+    eps = 1e-4  # on tolère une violation jusqu’à 0.01% de l’échelle typique de la loss
 
     convex_satisfied_fraction = float(np.mean(normalized_gaps <= eps))
     convex_violation_fraction = float(np.mean(normalized_gaps > eps))
@@ -354,7 +338,7 @@ def ela_difficulty(
     ]
 
     # Natural Hessian scale: loss scale / parameter scale^2
-    curvature_scale = y_scale / max(typical_param_scale ** 2, 1e-12)
+    curvature_scale = y_scale / max(typical_param_scale**2, 1e-12)
 
     hessian_condition_numbers = []
     normalized_spectral_radii = []
@@ -381,13 +365,10 @@ def ela_difficulty(
 
     H_list = Parallel(
         n_jobs=n_jobs,
-        batch_size=1,
+        batch_size=1,  # pyright: ignore[reportArgumentType]
         pre_dispatch="1*n_jobs",
     )(
-        delayed(compute_hessian)(
-            np.asarray(theta, dtype=float),
-            curvature_dim_indices
-        )
+        delayed(compute_hessian)(np.asarray(theta, dtype=float), curvature_dim_indices)
         for theta in tqdm(
             curvature_points,
             desc="Hessian curvature test",
@@ -399,6 +380,7 @@ def ela_difficulty(
 
     for H_sub in H_list:
         try:
+            assert H_sub is not None
             eigvals = np.linalg.eigvalsh(H_sub)
         except Exception:
             continue
@@ -427,48 +409,33 @@ def ela_difficulty(
         else:
             condition_number = condition_number_cap
 
-        hessian_condition_numbers.append(
-            min(condition_number, condition_number_cap)
-        )
+        hessian_condition_numbers.append(min(condition_number, condition_number_cap))
 
         # ------------------------------------------------------------
         # Metric 2: normalized spectral radius
         # ------------------------------------------------------------
-        normalized_spectral_radii.append(
-            max_abs_lambda / curvature_norm
-        )
+        normalized_spectral_radii.append(max_abs_lambda / curvature_norm)
 
         # ------------------------------------------------------------
         # Metric 3: negative eigenvalue fraction
         # ------------------------------------------------------------
-        negative_eigenvalue_fractions.append(
-            float(np.mean(eigvals < -eig_tol))
-        )
+        negative_eigenvalue_fractions.append(float(np.mean(eigvals < -eig_tol)))
 
-    hessian_condition_numbers = np.asarray(
-        hessian_condition_numbers,
-        dtype=float
-    )
+    hessian_condition_numbers = np.asarray(hessian_condition_numbers, dtype=float)
 
-    normalized_spectral_radii = np.asarray(
-        normalized_spectral_radii,
-        dtype=float
-    )
+    normalized_spectral_radii = np.asarray(normalized_spectral_radii, dtype=float)
 
     negative_eigenvalue_fractions = np.asarray(
-        negative_eigenvalue_fractions,
-        dtype=float
+        negative_eigenvalue_fractions, dtype=float
     )
 
-
-    def five_number_summary(x, prefix):
+    def five_number_summary(x: np.ndarray, prefix: str):
         q = np.quantile(x, [0.0, 0.25, 0.5, 0.75, 1.0])
 
         return {
             f"{prefix}_median": float(q[2]),
             f"{prefix}_max": float(q[4]),
         }
-
 
     curvature_features = {}
 
@@ -477,10 +444,8 @@ def ela_difficulty(
         (normalized_spectral_radii, "normalized_hessian_spectral_radius"),
         (negative_eigenvalue_fractions, "negative_eigenvalue_fraction"),
     ]:
-        curvature_features.update(
-            five_number_summary(values, name)
-        )
-        
+        curvature_features.update(five_number_summary(values, name))
+
     # ============================================================
     # 5) Combined features
     # ============================================================
@@ -532,8 +497,12 @@ def ela_difficulty(
         print(
             f"      max    = {curvature_features['hessian_condition_number_max']:.3e}"
         )
-        print("      Ratio lambda_max / lambda_min for locally positive definite Hessians.")
-        print("      Higher values indicate ill-conditioning and narrow curved valleys.")
+        print(
+            "      Ratio lambda_max / lambda_min for locally positive definite Hessians."
+        )
+        print(
+            "      Higher values indicate ill-conditioning and narrow curved valleys."
+        )
         print("")
 
         print("[ELA] Normalized Hessian spectral radius")
@@ -543,7 +512,9 @@ def ela_difficulty(
         print(
             f"      max    = {curvature_features['normalized_hessian_spectral_radius_max']:.3e}"
         )
-        print("      Largest absolute Hessian eigenvalue, normalized by the global curvature scale.")
+        print(
+            "      Largest absolute Hessian eigenvalue, normalized by the global curvature scale."
+        )
         print("      Higher values indicate strong local curvature.")
         print("")
 
