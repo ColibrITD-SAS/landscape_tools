@@ -3,6 +3,7 @@ graft landscape_tools
 prune .github
 prune .vscode
 prune .idea
+prune .wrangler
 
 global-exclude .DS_Store
 global-exclude __pycache__
