@@ -1,0 +1,10 @@
+graft landscape_tools
+
+prune .github
+prune .vscode
+prune .idea
+
+global-exclude .DS_Store
+global-exclude __pycache__
+global-exclude *.pyd
+global-exclude .env
