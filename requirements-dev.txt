@@ -4,3 +4,4 @@ sphinx
 sphinx-rtd-dark-mode
 sphinx-copybutton
 sphinx_github_changelog
+python-dotenv
