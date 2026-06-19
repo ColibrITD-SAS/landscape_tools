@@ -15,7 +15,7 @@ jobs:
         run: |
           pip install -r requirements-dev.txt
       - name: Build Package
-        run: python setup.py sdist bdist_wheel
+        run: python -m build
       - name: Install Twine
         run: |
           pip install twine
