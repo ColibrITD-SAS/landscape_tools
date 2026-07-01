@@ -1,7 +1,9 @@
 from typing import Callable, Optional
 
+import gudhi as gd
 import numpy as np
 from joblib import Parallel, delayed
+from sklearn.neighbors import NearestNeighbors
 from tqdm.auto import tqdm
 
 
@@ -13,6 +15,7 @@ def ela_difficulty(
     compute_hessian: Optional[Callable[[np.ndarray, np.ndarray], float]] = None,
     n_curvature_points: int = 128,
     curvature_dims: Optional[int] = None,
+    topology_k: int = 64,
     bounds: Optional[tuple[np.typing.ArrayLike, np.typing.ArrayLike]] = None,
     seed: Optional[int] = None,
     verbose: bool = True,
@@ -184,6 +187,7 @@ def ela_difficulty(
     iqr = q90 - q10
 
     y_scale = max(iqr, 1e-12)
+    # y_norm = (ys - np.min(ys)) / y_scale
 
     if verbose:
         print(f"[ELA] y_scale = {y_scale:.3e}")
@@ -429,12 +433,12 @@ def ela_difficulty(
         negative_eigenvalue_fractions, dtype=float
     )
 
-    def five_number_summary(x: np.ndarray, prefix: str):
-        q = np.quantile(x, [0.0, 0.25, 0.5, 0.75, 1.0])
+    def summary_stats(x: np.ndarray, prefix: str):
+        q = np.quantile(x, [0.5, 1.0])
 
         return {
-            f"{prefix}_median": float(q[2]),
-            f"{prefix}_max": float(q[4]),
+            f"{prefix}_median": float(q[0]),
+            f"{prefix}_max": float(q[1]),
         }
 
     curvature_features = {}
@@ -444,7 +448,144 @@ def ela_difficulty(
         (normalized_spectral_radii, "normalized_hessian_spectral_radius"),
         (negative_eigenvalue_fractions, "negative_eigenvalue_fraction"),
     ]:
-        curvature_features.update(five_number_summary(values, name))
+        curvature_features.update(summary_stats(values, name))
+
+    # ============================================================
+    # 5) Topological data analysis
+    # ============================================================
+
+    # 1) Build kNN graph
+
+    if verbose:
+        print("Computing topology features...")
+
+    n = len(ys)
+    topology_k = min(int(topology_k), n - 1)
+
+    if topology_k < 1:
+        raise RuntimeError("topology_k must be at least 1")
+
+    nn = NearestNeighbors(
+        n_neighbors=topology_k + 1,
+        algorithm="auto",
+        metric="euclidean",
+        n_jobs=n_jobs,
+    )
+
+    X = thetas
+    nn.fit(X)
+
+    neighbors_raw = nn.kneighbors(X, return_distance=False)
+
+    # On retire le point lui-même de sa liste de voisins
+    neighbors = np.empty((n, topology_k), dtype=int)
+
+    for i in range(n):
+        row = neighbors_raw[i]
+        row = row[row != i]
+        neighbors[i] = row[:topology_k]
+
+    # 2) Persistent homology with GUDHI
+
+    st = gd.SimplexTree()
+
+    # Vertices: each sample appears at filtration value y_norm[i]
+    for i in range(n):
+        st.insert([int(i)], filtration=float(ys[i]))
+
+    # Edges: kNN graph edges appear when both endpoints are active,
+    # so filtration = max(y_norm[i], y_norm[j])
+    for i in range(n):
+        for j in neighbors[i]:
+            j = int(j)
+
+            if i == j:
+                continue
+
+            filt = float(max(ys[i], ys[j]))
+            st.insert([int(i), int(j)], filtration=filt)
+
+    st.make_filtration_non_decreasing()
+    st.persistence()
+
+    intervals = st.persistence_intervals_in_dimension(0)
+
+    # 3) Component lifetimes
+
+    ymax = float(np.max(ys))
+
+    births = []
+    deaths = []
+    lifetimes = []
+
+    for birth, death in intervals:
+        birth = float(birth)
+
+        if np.isfinite(death):
+            death_clipped = float(death)
+        else:
+            death_clipped = ymax
+
+        births.append(birth)
+        deaths.append(death_clipped)
+        lifetimes.append(death_clipped - birth)
+
+    births = np.asarray(births, dtype=float)
+    deaths = np.asarray(deaths, dtype=float)
+    lifetimes = np.asarray(lifetimes, dtype=float)
+
+    # normalized_lifetimes = lifetimes / y_range
+
+    # 4) Approximate component counts over filtration
+
+    components_alive_over_time = []
+
+    for t in np.sort(ys):
+        alive = np.sum((births <= t) & (deaths > t))
+        components_alive_over_time.append(int(alive))
+
+    components_alive_over_time = np.asarray(components_alive_over_time, dtype=int)
+
+    n_components_created = int(len(intervals))
+    n_merges = int(np.sum(np.isfinite(intervals[:, 1]))) if len(intervals) else 0
+
+    max_components_alive = (
+        int(np.max(components_alive_over_time))
+        if len(components_alive_over_time)
+        else 0
+    )
+
+    mean_components_alive = (
+        float(np.mean(components_alive_over_time))
+        if len(components_alive_over_time)
+        else np.nan
+    )
+
+    median_components_alive = (
+        float(np.median(components_alive_over_time))
+        if len(components_alive_over_time)
+        else np.nan
+    )
+
+    # 5) Features
+
+    topology_features = {
+        "topology_k": int(topology_k),
+        "n_components_created": int(n_components_created),
+        "n_merges": int(n_merges),
+        "max_components_alive": int(max_components_alive),
+        "mean_components_alive": float(mean_components_alive),
+        "median_components_alive": float(median_components_alive),
+        "mean_component_lifetime": (
+            float(np.mean(lifetimes)) if len(lifetimes) else np.nan
+        ),
+        "median_component_lifetime": (
+            float(np.median(lifetimes)) if len(lifetimes) else np.nan
+        ),
+        "max_component_lifetime": (
+            float(np.max(lifetimes)) if len(lifetimes) else np.nan
+        ),
+    }
 
     # ============================================================
     # 5) Combined features
@@ -461,6 +602,7 @@ def ela_difficulty(
         },
         "convexity": convexity_features,
         "curvature": curvature_features,
+        "topology": topology_features,
     }
 
     # ============================================================
@@ -530,6 +672,24 @@ def ela_difficulty(
         print("")
 
         print("=" * 60)
+        print("[ELA] Topological data analysis")
+        print("-" * 60)
+
+        print("[ELA] Components alive (connected components)")
+        print(f"      mean   = {topology_features['mean_components_alive']:.3f}")
+        print(f"      median = {topology_features['median_components_alive']:.3f}")
+        print("      Number of connected components alive across filtration levels.")
+        print(
+            "      Higher values indicate more fragmented landscapes with many local minima."
+        )
+        print("")
+
+        print("[ELA] Component lifetimes")
+        print(f"      mean   = {topology_features['mean_component_lifetime']:.3e}")
+        print(f"      median = {topology_features['median_component_lifetime']:.3e}")
+        print("      Persistence of connected components.")
+        print("      Larger values indicate more pronounced and stable basins.")
+        print("")
 
     if return_features:
         return features
