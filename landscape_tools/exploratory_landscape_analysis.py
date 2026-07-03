@@ -732,7 +732,7 @@ def ela_difficulty(
     epsilons, H_values, deltas = compute_H_curve(
         thetas,
         ys,
-        n_eps=n_eps,
+        n_eps=2000,
         random_walk=True,
         seed=123,
     )
