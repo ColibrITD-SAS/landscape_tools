@@ -58,21 +58,20 @@ def ela_difficulty(
     # Helpers
     # ============================================================
 
-    def safe_eval(theta: np.ndarray):
-        try:
-            y = loss_value(theta)
-            if np.isfinite(y):
-                return float(y)
-            return np.nan
-        except Exception:
-            return np.nan
+    # def safe_eval(theta: np.ndarray):
+    #     try:
+    #         y = loss_value(theta)
+    #         if np.isfinite(y):
+    #             return float(y)
+    #         return np.nan
+    #     except Exception:
+    #         return np.nan
 
     # # ============================================================
     # # 0) Global sampling, shared by convexity and curvature
     # # ============================================================
 
     N_min = 512
-    N_max = N_max
     batch_size = 256
     rel_tol = 0.02
     patience = 2
@@ -108,7 +107,7 @@ def ela_difficulty(
         ]
 
         y_batch = Parallel(n_jobs=n_jobs)(
-            delayed(safe_eval)(theta) for theta in theta_batch
+            delayed(loss_value)(theta) for theta in theta_batch
         )
 
         for theta, y in zip(theta_batch, y_batch):
@@ -282,7 +281,7 @@ def ela_difficulty(
         linear_values.append(alpha * ya + (1.0 - alpha) * yb)
 
     ym_values = Parallel(n_jobs=n_jobs)(
-        delayed(safe_eval)(m)
+        delayed(loss_value)(m)
         for m in tqdm(ms, desc="Convexity eval", disable=not verbose)
     )
 
@@ -588,6 +587,150 @@ def ela_difficulty(
     }
 
     # ============================================================
+    # 6) Information content
+    # ============================================================
+
+    def finite_differences_from_walk(thetas, ys, walk_indices=None, eps_norm=1e-15):
+        """
+        Compute Delta C_i normalized along a walk.
+        Delta C_i = (y_{i+1} - y_i) / ||theta_{i+1} - theta_i||
+        """
+
+        thetas = np.asarray(thetas, dtype=float)
+        ys = np.asarray(ys, dtype=float)
+
+        if walk_indices is None:
+            walk_indices = np.arange(len(ys))
+        else:
+            walk_indices = np.asarray(walk_indices)
+
+        theta_walk = thetas[walk_indices]
+        y_walk = ys[walk_indices]
+
+        dtheta = theta_walk[1:] - theta_walk[:-1]
+        dy = y_walk[1:] - y_walk[:-1]
+
+        norms = np.linalg.norm(dtheta, axis=1)
+
+        valid = norms > eps_norm
+
+        deltas = dy[valid] / norms[valid]
+
+        return deltas
+
+    def symbolize_deltas(deltas, epsilon):
+
+        deltas = np.asarray(deltas)
+
+        symbols = np.zeros(len(deltas), dtype=int)
+        symbols[deltas < -epsilon] = -1
+        symbols[deltas > epsilon] = +1
+
+        return symbols
+
+    def information_content_from_symbols(symbols):
+
+        from collections import Counter
+
+        symbols = np.asarray(symbols)
+
+        if len(symbols) < 2:
+            return 0.0, {}
+
+        pairs = list(zip(symbols[:-1], symbols[1:]))
+
+        # On garde seulement les transitions a != b
+        diff_pairs = [(a, b) for a, b in pairs if a != b]
+
+        total_pairs = len(pairs)
+
+        if total_pairs == 0:
+            return 0.0, {}
+
+        counts = Counter(diff_pairs)
+
+        H = 0.0
+        probs = {}
+
+        for pair, count in counts.items():
+            p = count / total_pairs
+            probs[pair] = p
+
+            if p > 0:
+                H += -p * (np.log(p) / np.log(6))
+
+        return H, probs
+
+    def compute_H_curve(
+        thetas,
+        ys,
+        n_eps=200,
+        eps_min=None,
+        eps_max=None,
+        walk_indices=None,
+        random_walk=True,
+        seed=None,
+    ):
+
+        thetas = np.asarray(thetas, dtype=float)
+        ys = np.asarray(ys, dtype=float)
+
+        N = len(ys)
+
+        if walk_indices is None:
+            if random_walk:
+                rng = np.random.default_rng(seed)
+                walk_indices = rng.permutation(N)
+            else:
+                walk_indices = np.arange(N)
+
+        deltas = finite_differences_from_walk(thetas, ys, walk_indices=walk_indices)
+
+        abs_deltas = np.abs(deltas)
+        abs_deltas = abs_deltas[np.isfinite(abs_deltas)]
+
+        if len(abs_deltas) == 0:
+            raise ValueError("No Delta C valid")
+
+        if eps_max is None:
+            eps_max = np.max(abs_deltas)
+
+        if eps_min is None:
+            positive = abs_deltas[abs_deltas > 0]
+            if len(positive) > 0:
+                eps_min = max(np.min(positive) * 0.1, 1e-15)
+            else:
+                eps_min = 1e-15
+
+        if eps_max <= eps_min:
+            eps_max = eps_min * 10
+
+        epsilons = np.logspace(np.log10(eps_min), np.log10(eps_max), n_eps)
+
+        H_values = []
+
+        for eps in epsilons:
+            symbols = symbolize_deltas(deltas, eps)
+            H, _ = information_content_from_symbols(symbols)
+            H_values.append(H)
+
+        return epsilons, np.asarray(H_values), deltas
+
+    epsilons, H_values, deltas = compute_H_curve(
+        thetas,
+        ys,
+        n_eps=n_eps,
+        random_walk=True,
+        seed=123,
+    )
+
+    idx_max = np.argmax(H_values)
+    epsilon_max = epsilons[idx_max]
+    H_max = H_values[idx_max]
+
+    infocontent_features = {"epsilon_max": epsilon_max, "H_max": H_max}
+
+    # ============================================================
     # 5) Combined features
     # ============================================================
 
@@ -603,6 +746,7 @@ def ela_difficulty(
         "convexity": convexity_features,
         "curvature": curvature_features,
         "topology": topology_features,
+        "infocontent_features": infocontent_features,
     }
 
     # ============================================================
@@ -689,6 +833,15 @@ def ela_difficulty(
         print(f"      median = {topology_features['median_component_lifetime']:.3e}")
         print("      Persistence of connected components.")
         print("      Larger values indicate more pronounced and stable basins.")
+        print("")
+
+        print("=" * 60)
+        print("[ELA] Information content")
+        print("-" * 60)
+        print(f"      epsilon_max   = {infocontent_features['epsilon_max']:.3f}")
+        print(f"      H_max = {infocontent_features['H_max']:.3f}")
+        print("      Desc incoming")
+
         print("")
 
     if return_features:
