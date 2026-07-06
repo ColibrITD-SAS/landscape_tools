@@ -43,7 +43,7 @@ def loss_scan_1d(
     n_steps: int = 200,
     end_points: tuple[float, float] | None = None,
     n_jobs: int = -1,
-) -> None:
+) -> Figure:
     """Evaluate and plot the loss function along a one-dimensional direction in
     parameter space.
 
@@ -103,16 +103,28 @@ def loss_scan_1d(
 
     # -------------------- Visualization --------------------
 
-    plt.figure(figsize=(9, 6))
-    plt.plot(t_vals, l, "-o", ms=3, color="lightgreen")
-    plt.yscale("log")
-    plt.xlabel("t")
-    plt.ylabel("Loss")
-    plt.title("1D Loss Landscape")
-    plt.grid(True)
-    plt.tight_layout()
-    plt.savefig("figures/landscape1d.pdf")
-    plt.show()
+    # plt.figure(figsize=(9, 6))
+    # plt.plot(t_vals, l, "-o", ms=3, color="lightgreen")
+    # plt.yscale("log")
+    # plt.xlabel("t")
+    # plt.ylabel("Loss")
+    # plt.title("1D Loss Landscape")
+    # plt.grid(True)
+    # plt.tight_layout()
+    # plt.savefig("figures/landscape1d.pdf")
+    # plt.show()
+
+    fig, ax = plt.subplots(figsize=(9, 6))
+    ax.plot(t_vals, l, "-o", ms=3, color="lightgreen")
+    ax.set_yscale("log")
+    ax.set_xlabel("t")
+    ax.set_ylabel("Loss")
+    ax.set_title("1D Loss Landscape")
+    ax.grid(True)
+    fig.tight_layout()
+    fig.savefig("figures/landscape1d.pdf")
+
+    return fig
 
 
 def loss_scan_2d_3d(

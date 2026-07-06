@@ -19,3 +19,4 @@ dependencies = { file = ["requirements.txt"] }
 
 [tool.setuptools.packages.find]
 include = ["landscape_tools*"]
+
