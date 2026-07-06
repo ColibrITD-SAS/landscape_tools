@@ -113,7 +113,6 @@ def loss_scan_1d(
     # plt.tight_layout()
     # plt.savefig("figures/landscape1d.pdf")
     # plt.show()
-
     fig, ax = plt.subplots(figsize=(9, 6))
     ax.plot(t_vals, l, "-o", ms=3, color="lightgreen")
     ax.set_yscale("log")
