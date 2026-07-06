@@ -8,48 +8,28 @@ from tqdm.auto import tqdm
 
 
 def ela_difficulty(
-    sample_once: Callable[[], list[float]],
+    sample_once: Callable[[], np.typing.ArrayLike],
     loss_value: Callable[[np.ndarray], float],
+    compute_hessian: Callable[
+        [np.ndarray, np.ndarray], float
+    ],  # TODO preciser dans la docstring que ca renvoie une matrice reelle symetrique
     N_max: int = 1024,
     max_pairs: int = 1024,
-    compute_hessian: Optional[Callable[[np.ndarray, np.ndarray], float]] = None,
     n_curvature_points: int = 128,
     curvature_dims: Optional[int] = None,
     topology_k: int = 64,
     bounds: Optional[tuple[np.typing.ArrayLike, np.typing.ArrayLike]] = None,
+    n_eps: int = 2000,
     seed: Optional[int] = None,
     verbose: bool = True,
     return_features: bool = True,
     n_jobs: int = -1,
 ):
     """Compute ELA difficulty scores based on:
-    - convexity tests
-    - finite-difference curvature tests
-    This function performs global sampling only once and reuses:
-    - sampled points
-    - sampled loss values
-    - y_scale
-    - parameter scale
-    - random generator
 
     Args:
-        sample_once: Function returning one parameter vector theta.
-        loss_value: Function returning scalar loss at theta.
-        N: Number of global samples.
-        max_pairs: Maximum number of pairs for convexity test.
-        n_curvature_points: Number of points used for curvature estimation.
-        curvature_dims: Number of dimensions used for curvature.
-            If ``None``, all dimensions are used.
-        epsilon: Relative finite-difference step.
-            For angles, h = epsilon * angle_period.
-        bounds: Optional bounds (lower, upper).
-            If ``None``, bounds are inferred from global samples.
-        seed: Random seed.
-        verbose: Print progress and diagnostics.
-        return_features: If True, returns detailed features.
 
     Returns:
-        scores, (and features If return_features is ``True``)
     """
 
     rng = np.random.default_rng(seed)
@@ -58,14 +38,14 @@ def ela_difficulty(
     # Helpers
     # ============================================================
 
-    # def safe_eval(theta: np.ndarray):
-    #     try:
-    #         y = loss_value(theta)
-    #         if np.isfinite(y):
-    #             return float(y)
-    #         return np.nan
-    #     except Exception:
-    #         return np.nan
+    def safe_eval(theta: np.ndarray):
+        try:
+            y = loss_value(theta)
+            if np.isfinite(y):
+                return float(y)
+            return np.nan
+        except Exception:
+            return np.nan
 
     # # ============================================================
     # # 0) Global sampling, shared by convexity and curvature
@@ -107,7 +87,7 @@ def ela_difficulty(
         ]
 
         y_batch = Parallel(n_jobs=n_jobs)(
-            delayed(loss_value)(theta) for theta in theta_batch
+            delayed(safe_eval)(theta) for theta in theta_batch
         )
 
         for theta, y in zip(theta_batch, y_batch):
@@ -255,8 +235,6 @@ def ela_difficulty(
     convex_gaps = []
     indices = np.arange(len(thetas))
 
-    pairs = []
-    alphas = []
     ms = []
     linear_values = []
 
@@ -275,13 +253,11 @@ def ela_difficulty(
         # For angles this is a simple interpolation, not geodesic on the circle.
         m = alpha * a + (1.0 - alpha) * b
 
-        pairs.append((i, j))
-        alphas.append(alpha)
         ms.append(m)
         linear_values.append(alpha * ya + (1.0 - alpha) * yb)
 
     ym_values = Parallel(n_jobs=n_jobs)(
-        delayed(loss_value)(m)
+        delayed(safe_eval)(m)
         for m in tqdm(ms, desc="Convexity eval", disable=not verbose)
     )
 
@@ -488,12 +464,12 @@ def ela_difficulty(
 
     st = gd.SimplexTree()
 
-    # Vertices: each sample appears at filtration value y_norm[i]
+    # Vertices: each sample appears at filtration value ys[i]
     for i in range(n):
         st.insert([int(i)], filtration=float(ys[i]))
 
     # Edges: kNN graph edges appear when both endpoints are active,
-    # so filtration = max(y_norm[i], y_norm[j])
+    # so filtration = max(ys[i], ys[j])
     for i in range(n):
         for j in neighbors[i]:
             j = int(j)
@@ -664,11 +640,7 @@ def ela_difficulty(
     def compute_H_curve(
         thetas,
         ys,
-        n_eps=200,
-        eps_min=None,
-        eps_max=None,
-        walk_indices=None,
-        random_walk=True,
+        n_eps,
         seed=None,
     ):
 
@@ -677,12 +649,8 @@ def ela_difficulty(
 
         N = len(ys)
 
-        if walk_indices is None:
-            if random_walk:
-                rng = np.random.default_rng(seed)
-                walk_indices = rng.permutation(N)
-            else:
-                walk_indices = np.arange(N)
+        rng = np.random.default_rng(seed)
+        walk_indices = rng.permutation(N)
 
         deltas = finite_differences_from_walk(thetas, ys, walk_indices=walk_indices)
 
@@ -692,15 +660,13 @@ def ela_difficulty(
         if len(abs_deltas) == 0:
             raise ValueError("No Delta C valid")
 
-        if eps_max is None:
-            eps_max = np.max(abs_deltas)
+        eps_max = np.max(abs_deltas)
 
-        if eps_min is None:
-            positive = abs_deltas[abs_deltas > 0]
-            if len(positive) > 0:
-                eps_min = max(np.min(positive) * 0.1, 1e-15)
-            else:
-                eps_min = 1e-15
+        positive = abs_deltas[abs_deltas > 0]
+        if len(positive) > 0:
+            eps_min = max(np.min(positive) * 0.1, 1e-15)
+        else:
+            eps_min = 1e-15
 
         if eps_max <= eps_min:
             eps_max = eps_min * 10
@@ -716,12 +682,10 @@ def ela_difficulty(
 
         return epsilons, np.asarray(H_values), deltas
 
-    epsilons, H_values, deltas = compute_H_curve(
+    epsilons, H_values, _ = compute_H_curve(
         thetas,
         ys,
-        n_eps=2000,
-        random_walk=True,
-        seed=123,
+        n_eps=n_eps,
     )
 
     idx_max = np.argmax(H_values)
@@ -840,7 +804,7 @@ def ela_difficulty(
         print("-" * 60)
         print(f"      epsilon_max   = {infocontent_features['epsilon_max']:.3f}")
         print(f"      H_max = {infocontent_features['H_max']:.3f}")
-        print("      Desc incoming")
+        print("      ......")
 
         print("")
 
