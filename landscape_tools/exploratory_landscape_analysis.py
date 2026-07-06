@@ -760,11 +760,9 @@ def ela_difficulty(
         print(
             f"      max    = {curvature_features['hessian_condition_number_max']:.3e}"
         )
+        print("      Ratio max(abs(lambda)) / min(abs(lambda)) of Hessian eigenvalues.")
         print(
-            "      Ratio lambda_max / lambda_min for locally positive definite Hessians."
-        )
-        print(
-            "      Higher values indicate ill-conditioning and narrow curved valleys."
+            "      Higher values indicate anisotropic local curvature or ill-conditioning."
         )
         print("")
 
@@ -801,7 +799,10 @@ def ela_difficulty(
         print(f"      median = {topology_features['median_components_alive']:.3f}")
         print("      Number of connected components alive across filtration levels.")
         print(
-            "      Higher values indicate more fragmented landscapes with many local minima."
+            "      Higher values mean that sampled points form more clearly separated groups across the filtration."
+        )
+        print(
+            "      This suggests a landscape with several distinct basin-like regions."
         )
         print("")
 
@@ -817,8 +818,15 @@ def ela_difficulty(
         print("-" * 60)
         print(f"      epsilon_max   = {infocontent_features['epsilon_max']:.3f}")
         print(f"      H_max = {infocontent_features['H_max']:.3f}")
-        print("      ......")
-
+        print(
+            "      epsilon_max is the level of detail where the landscape changes are easiest to detect."
+        )
+        print(
+            "      H_max measures how varied these changes are across the sampled landscape."
+        )
+        print(
+            "      Higher values suggest more visible changes and clearer directions for optimization."
+        )
         print("")
 
     if return_features:
