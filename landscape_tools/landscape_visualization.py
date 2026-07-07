@@ -1683,7 +1683,7 @@ def plot_pca_circuit_schematic_real_circuit(
     fig, ax = plt.subplots(figsize=(fig_w, fig_h))
 
     # ------------------------------------------------------------------
-    # 7) Draw qubit lines
+    # 7) Draw qubit lines test
     # ------------------------------------------------------------------
     line_x0 = left_margin + 0.25
     line_x1 = max_x + 0.65
