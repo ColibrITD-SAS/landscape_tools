@@ -136,7 +136,7 @@ def loss_scan_2d_3d(
     end_points_y: tuple[float, float] | None = None,
     plot3D: bool = True,
     n_jobs: int = -1,
-) -> None:
+) -> tuple[Figure, Optional[Figure]]:
     """Evaluate and plot the loss function on a two-dimensional parameter plane.
 
     Parameters:
@@ -222,29 +222,29 @@ def loss_scan_2d_3d(
 
     # -------------------- 2D visualization --------------------
 
-    fig, ax = plt.subplots(figsize=(9, 6))
+    fig2d, ax = plt.subplots(figsize=(9, 6))
 
     cp1 = ax.contourf(T1, T2, l, levels=50, cmap="viridis")
 
     ax.set_title("2D Loss Landscape")
     ax.set_xlabel("t1")
     ax.set_ylabel("t2")
-    fig.colorbar(cp1, ax=ax, label="Loss value")
+    fig2d.colorbar(cp1, ax=ax, label="Loss value")
 
     plt.tight_layout()
     plt.savefig("figures/landscape2d.pdf")
-    plt.show()
 
     # -------------------- 3D visualization --------------------
+    fig3d = None
 
     if plot3D:
 
-        fig = plt.figure(figsize=(9, 6))
+        fig3d = plt.figure(figsize=(9, 6))
         norm = colors.LogNorm(
             vmin=np.percentile(l[l > 0], 1), vmax=np.percentile(l, 99)
         )
 
-        ax1 = fig.add_subplot(111, projection="3d")
+        ax1 = fig3d.add_subplot(111, projection="3d")
         ax1.set_box_aspect([1, 1, 1])
 
         _ = ax1.plot_surface(
@@ -268,11 +268,11 @@ def loss_scan_2d_3d(
 
         mappable = plt.cm.ScalarMappable(norm=norm, cmap="viridis")
         mappable.set_array(l)
-        fig.colorbar(mappable, ax=ax1, shrink=0.5, aspect=10)
-
+        fig3d.colorbar(mappable, ax=ax1, shrink=0.5, aspect=10)
         plt.tight_layout()
         plt.savefig("figures/landscape3d.pdf")
-        plt.show()
+
+    return fig2d, fig3d
 
 
 class PCAResult(TypedDict):
