@@ -1035,11 +1035,6 @@ def analyze_pca(
     }
 
 
-class PCAPlotResult(TypedDict):
-    summary: Figure
-    components: Figure
-
-
 def plot_pca_analysis(
     analysis: AnalysisResult,
     n_top: int = 10,
@@ -1047,7 +1042,7 @@ def plot_pca_analysis(
     summary_figsize: Optional[tuple[int, int]] = None,
     component_figsize_per_row: Optional[tuple[int, int]] = None,
     max_label_length: int = 28,
-) -> PCAPlotResult:
+) -> tuple[Figure, Figure]:
     """Plot summaries of a PCA interpretability analysis.
 
     Args:
@@ -1246,11 +1241,9 @@ def plot_pca_analysis(
 
     fig_components.tight_layout()
 
-    plt.show()
+    #plt.show()
 
-    return {
-        "summary": fig_summary,
-        "components": fig_components,
+    return fig_summary, fig_components
     }
 
 
@@ -2046,11 +2039,11 @@ def perform_pca_and_analysis(
     )
 
     print("[PCA] Generating global PCA analysis figures")
-    plot_pca_analysis(analysis, n_top=n_top)
+    fig_summary, fig_compo = plot_pca_analysis(analysis, n_top=n_top)
 
     print("[PCA] Analysis completed")
 
-    return analysis, pca2d, pca3d, circuit_plot
+    return analysis, pca2d, pca3d, circuit_plot, fig_summary, fig_compo
 
 
 # -----------------------------------------------------------------------------
