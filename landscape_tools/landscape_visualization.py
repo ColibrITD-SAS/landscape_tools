@@ -2020,7 +2020,7 @@ def perform_pca_and_analysis(
     )
 
     print("[PCA] Plotting 3D PCA loss surface")
-    plot_pca_loss_scan_3d(
+    pca3d, _ = plot_pca_loss_scan_3d(
         scan,
         elev=35,
         azim=-50,
@@ -2038,7 +2038,7 @@ def perform_pca_and_analysis(
     )
 
     print("[PCA] Visualizing parameter influence on real circuits")
-    plot_pca_circuit_schematic_real_circuit(
+    circuit_plot = plot_pca_circuit_schematic_real_circuit(
         qc=circuit,
         analysis=analysis,
         score_key="global_sq_influence",
@@ -2050,7 +2050,7 @@ def perform_pca_and_analysis(
 
     print("[PCA] Analysis complete")
 
-    return analysis, pca2d
+    return analysis, pca2d, pca3d, circuit_plot
 
 
 # -----------------------------------------------------------------------------
