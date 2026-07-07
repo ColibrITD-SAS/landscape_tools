@@ -272,7 +272,7 @@ def loss_scan_2d_3d(
         plt.tight_layout()
         plt.savefig("figures/landscape3d.pdf")
 
-    return fig2d, fig3d
+    return fig2d, fig3d, test
 
 
 class PCAResult(TypedDict):
