@@ -2013,7 +2013,7 @@ def perform_pca_and_analysis(
     scan = pca_loss_scan(params_history, loss_function, n_steps, offset, n_jobs=n_jobs)
 
     print("[PCA] Plotting 2D PCA loss landscape")
-    plot_pca_loss_scan_2d(
+    pca2d, _ = plot_pca_loss_scan_2d(
         scan,
         contour=True,
         contour_levels=25,
@@ -2026,7 +2026,7 @@ def perform_pca_and_analysis(
         azim=-50,
     )
 
-    plt.show()
+    # plt.show()
 
     print("\n[PCA] Computing interpretable PCA analysis...")
     analysis = analyze_pca(
@@ -2050,7 +2050,7 @@ def perform_pca_and_analysis(
 
     print("[PCA] Analysis complete")
 
-    return analysis
+    return analysis, pca2d
 
 
 # -----------------------------------------------------------------------------
