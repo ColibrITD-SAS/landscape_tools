@@ -2039,11 +2039,11 @@ def perform_pca_and_analysis(
     )
 
     print("[PCA] Generating global PCA analysis figures")
-    fig_summary, fig_compo = plot_pca_analysis(analysis, n_top=n_top)
+    fig_summary, fig_compon = plot_pca_analysis(analysis, n_top=n_top)
 
     print("[PCA] Analysis completed")
 
-    return analysis, pca2d, pca3d, circuit_plot, fig_summary, fig_compo
+    return analysis, pca2d, pca3d, circuit_plot, fig_summary, fig_compon
 
 
 # -----------------------------------------------------------------------------
