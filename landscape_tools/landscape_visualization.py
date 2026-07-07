@@ -1311,7 +1311,7 @@ def plot_pca_circuit_schematic_real_circuit(
         title = ""
 
     import matplotlib.patheffects as pe
-    from matplotlib.cm import get_cmap
+    import matplotlib.pyplot as plt
     from matplotlib.patches import Rectangle
 
     # ------------------------------------------------------------------
@@ -1668,7 +1668,7 @@ def plot_pca_circuit_schematic_real_circuit(
         vmax += 1e-12
 
     norm = Normalize(vmin=vmin, vmax=vmax)
-    cmap_obj = get_cmap(cmap)
+    cmap_obj = plt.get_cmap(cmap)
 
     left_margin = -1.6 if (gamma_score is not None and show_gamma) else -0.8
 
