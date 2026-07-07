@@ -1241,10 +1241,9 @@ def plot_pca_analysis(
 
     fig_components.tight_layout()
 
-    #plt.show()
+    # plt.show()
 
     return fig_summary, fig_components
-    }
 
 
 def plot_pca_circuit_schematic_real_circuit(
