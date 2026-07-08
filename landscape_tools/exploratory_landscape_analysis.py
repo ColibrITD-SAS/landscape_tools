@@ -5,10 +5,19 @@ from joblib import Parallel, delayed
 from tqdm.auto import tqdm
 
 
+@dataclass
+class SamplingConfig:
+    N_min: int = 256
+    batch_size: int = 256
+    N_max: int = 2048
+    rel_tol = 0.02
+    patience = 2
+
+
 def ela_difficulty(
     sample_once: Callable[[], list[float]],
     loss_value: Callable[[np.ndarray], float],
-    N_max: int = 1024,
+    sampling: SamplingConfig | None = None,
     max_pairs: int = 1024,
     compute_hessian: Optional[Callable[[np.ndarray, np.ndarray], float]] = None,
     n_curvature_points: int = 128,
@@ -68,11 +77,14 @@ def ela_difficulty(
     # # 0) Global sampling, shared by convexity and curvature
     # # ============================================================
 
-    N_min = 512
-    N_max = N_max
-    batch_size = 256
-    rel_tol = 0.02
-    patience = 2
+    if sampling is None:
+        sampling = SamplingConfig()
+
+    N_min = sampling.N_min
+    N_max = sampling.N_max
+    batch_size = sampling.batch_size
+    rel_tol = sampling.rel_tol
+    patience = sampling.patience
 
     thetas = []
     ys = []
