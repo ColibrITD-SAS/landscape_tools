@@ -493,7 +493,7 @@ def ela_difficulty(
     deaths = []
     lifetimes = []
 
-    for birth, death in intervals:
+    for birth, death in tqdm(intervals, desc="Topological data analysis"):
         birth = float(birth)
 
         if np.isfinite(death):
@@ -675,7 +675,7 @@ def ela_difficulty(
 
         H_values = []
 
-        for eps in epsilons:
+        for eps in tqdm(epsilons, desc="Information content test"):
             symbols = symbolize_deltas(deltas, eps)
             H, _ = information_content_from_symbols(symbols)
             H_values.append(H)
