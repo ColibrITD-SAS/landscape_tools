@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from typing import Callable, Optional
 
 import gudhi as gd
