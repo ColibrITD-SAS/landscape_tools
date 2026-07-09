@@ -391,15 +391,15 @@ def ela_difficulty(
         print("Computing topology features...")
 
     n = len(ys)
-    topology_k = min(int(topology_k), n - 1)
 
-    if topology_k < 1:
-        raise RuntimeError("topology_k must be at least 1")
+    if topology_k < 1 or topology_k >= n:
+        raise RuntimeError("topology_k is not fitting")
 
     nn = NearestNeighbors(
-        n_neighbors=topology_k + 1,
+        n_neighbors=topology_k
+        + 1,  # each point is returned as its own nearest neighbor (distance = 0)
         algorithm="auto",
-        metric="euclidean",
+        metric="euclidean",  # for distance
         n_jobs=n_jobs,
     )
 
@@ -408,17 +408,20 @@ def ela_difficulty(
 
     neighbors_raw = nn.kneighbors(X, return_distance=False)
 
-    # On retire le point lui-même de sa liste de voisins
-    neighbors = np.empty((n, topology_k), dtype=int)
+    neighbors = np.empty(
+        (n, topology_k), dtype=int
+    )  # array that stores exactly k neighbors for each sample
 
     for i in range(n):
         row = neighbors_raw[i]
-        row = row[row != i]
-        neighbors[i] = row[:topology_k]
+        row = row[row != i]  # remove the point's own index
+        neighbors[i] = row[:topology_k]  # keep exactly k neighbors
 
     # 2) Persistent homology with GUDHI
 
-    st = gd.SimplexTree()
+    st = (
+        gd.SimplexTree()
+    )  # GUDHI's data structure for storing: vertices, edges and their filtration values
 
     # Vertices: each sample appears at filtration value ys[i]
     for i in range(n):
@@ -428,7 +431,6 @@ def ela_difficulty(
     # so filtration = max(ys[i], ys[j])
     for i in range(n):
         for j in neighbors[i]:
-            j = int(j)
 
             if i == j:
                 continue
