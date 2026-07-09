@@ -17,6 +17,7 @@ class SamplingConfig:
     patience = 2
 
 
+# TODO il faut expliquer eig_tol, condition_number_cap
 def ela_difficulty(
     sample_once: Callable[[], np.typing.ArrayLike],
     loss_value: Callable[[np.ndarray], float],
@@ -79,35 +80,25 @@ def ela_difficulty(
     pbar = tqdm(total=N_max, desc="Global sampling", disable=not verbose, leave=False)
 
     while len(ys) < N_max:
-        # sample one batch
-        # for _ in range(batch_size):
-        #     if len(ys) >= N_max:
-        #         break
 
-        #     theta = np.asarray(sample_once(), dtype=float)
-        #     y = safe_eval(theta)
-
-        #     if np.isfinite(y) and np.all(np.isfinite(theta)):
-        #         thetas.append(theta)
-        #         ys.append(y)
-
-        #     pbar.update(1)
-
-        remaining = N_max - len(ys)
+        remaining = N_max - len(ys)  # compute what's left to reach N_max
         current_batch_size = min(batch_size, remaining)
 
         theta_batch = [
-            np.asarray(sample_once(), dtype=float) for _ in range(current_batch_size)
+            np.asarray(sample_once(), dtype=float)
+            for _ in range(
+                current_batch_size
+            )  # array of batch_size containing sampled points
         ]
 
         y_batch = Parallel(n_jobs=n_jobs)(
-            delayed(safe_eval)(theta) for theta in theta_batch
+            delayed(safe_eval)(theta)
+            for theta in theta_batch  # loss value for each points
         )
 
         for theta, y in zip(theta_batch, y_batch):
             if len(ys) >= N_max:
                 break
-
             assert y is not None
             if np.isfinite(y) and np.all(np.isfinite(theta)):
                 thetas.append(theta)
@@ -115,26 +106,22 @@ def ela_difficulty(
 
         pbar.update(current_batch_size)
 
-        # for res in results:
-        #     if len(ys) >= N_max:
-        #         break
-
-        #     if res is not None:
-        #         theta, y = res
-        #         thetas.append(theta)
-        #         ys.append(y)
-
-        # Need enough samples before checking stability
         if len(ys) < N_min:
             continue
 
-        ys_tmp = np.asarray(ys, dtype=float)
+        ys_tmp = np.asarray(
+            ys, dtype=float
+        )  # converted into a NumPy array to enable statistical operations
 
         q10, q90 = np.percentile(ys_tmp, [10, 90])
-        current_y_scale = max(q90 - q10, 1e-12)
+        current_y_scale = max(
+            q90 - q10, 1e-12
+        )  # robust estimate of the spread of the outputs
 
         if previous_y_scale is not None:
-            relative_change = abs(current_y_scale - previous_y_scale) / max(
+            relative_change = abs(
+                current_y_scale - previous_y_scale
+            ) / max(  # measures how much the estimated output scale has changed relative to the previous estimate
                 previous_y_scale, 1e-12
             )
 
@@ -144,7 +131,9 @@ def ela_difficulty(
                     f"relative_change={relative_change:.3e}"
                 )
 
-            if relative_change < rel_tol:
+            if (
+                relative_change < rel_tol
+            ):  # requires the scale estimate to remain stable for several consecutive checks
                 stable_count += 1
             else:
                 stable_count = 0
@@ -217,43 +206,21 @@ def ela_difficulty(
     # 3) Convexity difficulty
     # ============================================================
 
-    n_pairs = min(max_pairs, len(thetas) * (len(thetas) - 1) // 2)
+    n_pairs = min(
+        max_pairs, len(thetas) * (len(thetas) - 1) // 2
+    )  # the maximum number of distinct pairs among N points is N(N-1)/2
 
     if n_pairs <= 0:
         raise RuntimeError("Not enough samples to compute convexity pairs")
 
-    # convex_gaps = []
-    # indices = np.arange(len(thetas))
-
-    # for _ in tqdm(range(n_pairs), desc="Convexity test", disable=not verbose):
-    #     i, j = rng.choice(indices, size=2, replace=False)
-
-    #     a = thetas[i]
-    #     b = thetas[j]
-
-    #     ya = ys[i]
-    #     yb = ys[j]
-
-    #     alpha = rng.uniform(0, 1)
-
-    #     # Linear interpolation in parameter space.
-    #     # For angles this is a simple interpolation, not geodesic on the circle.
-    #     m = alpha * a + (1.0 - alpha) * b
-
-    #     ym = safe_eval(m)
-
-    #     if np.isfinite(ym):
-    #         gap = ym - (alpha * ya + (1.0 - alpha) * yb)
-    #         convex_gaps.append(gap)
-
     convex_gaps = []
-    indices = np.arange(len(thetas))
+    indices = np.arange(len(thetas))  # [0,1,2,3,...,N-1]
 
     ms = []
     linear_values = []
 
     for _ in tqdm(range(n_pairs), desc="Convexity sampling", disable=not verbose):
-        i, j = rng.choice(indices, size=2, replace=False)
+        i, j = rng.choice(indices, size=2, replace=False)  # select two random indices
 
         a = thetas[i]
         b = thetas[j]
@@ -262,15 +229,14 @@ def ela_difficulty(
         yb = ys[j]
 
         alpha = rng.uniform(0, 1)
-
-        # Linear interpolation in parameter space.
-        # For angles this is a simple interpolation, not geodesic on the circle.
         m = alpha * a + (1.0 - alpha) * b
 
         ms.append(m)
-        linear_values.append(alpha * ya + (1.0 - alpha) * yb)
+        linear_values.append(
+            alpha * ya + (1.0 - alpha) * yb
+        )  # right part in convexity inequality
 
-    ym_values = Parallel(n_jobs=n_jobs)(
+    ym_values = Parallel(n_jobs=n_jobs)(  # left part in convexity inequality
         delayed(safe_eval)(m)
         for m in tqdm(ms, desc="Convexity eval", disable=not verbose)
     )
@@ -280,33 +246,26 @@ def ela_difficulty(
         if np.isfinite(ym):
             convex_gaps.append(ym - linear_value)
 
-    convex_gaps = np.asarray(convex_gaps, dtype=float)
+    convex_gaps = np.asarray(convex_gaps, dtype=float)  # gap = f(m) − (αf(a)+(1−α)f(b))
 
     if len(convex_gaps) == 0:
         raise RuntimeError("No valid convexity evaluations")
 
     normalized_gaps = convex_gaps / y_scale
 
-    eps = 1e-4  # on tolère une violation jusqu’à 0.01% de l’échelle typique de la loss
-
-    convex_satisfied_fraction = float(np.mean(normalized_gaps <= eps))
-    convex_violation_fraction = float(np.mean(normalized_gaps > eps))
+    convex_violation_fraction = float(np.mean(normalized_gaps > 0))
 
     mean_gap = float(np.mean(convex_gaps))
     mean_gap_norm = float(np.mean(normalized_gaps))
     median_gap = float(np.median(convex_gaps))
     median_gap_norm = float(np.median(normalized_gaps))
-    q90_gap_norm = float(np.quantile(normalized_gaps, 0.9))
 
     convexity_features = {
-        "n_convexity_pairs": int(len(convex_gaps)),
-        "convex_satisfied_fraction": convex_satisfied_fraction,
         "convex_violation_fraction": convex_violation_fraction,
         "mean_gap": mean_gap,
         "mean_gap_norm": mean_gap_norm,
         "median_gap": median_gap,
         "median_gap_norm": median_gap_norm,
-        "q90_gap_norm": q90_gap_norm,
     }
 
     # ============================================================
@@ -319,42 +278,31 @@ def ela_difficulty(
         )
 
     if curvature_dims is None:
-        curvature_dim_indices = np.arange(dim)
+        curvature_dim_indices = np.arange(dim)  # [0,1,2,..., len(thetas)]
     else:
         curvature_dims = min(int(curvature_dims), dim)
-        curvature_dim_indices = rng.choice(dim, size=curvature_dims, replace=False)
+        curvature_dim_indices = rng.choice(
+            dim, size=curvature_dims, replace=False
+        )  # randomly select a subset of indices
 
     curvature_dim_indices = np.asarray(curvature_dim_indices, dtype=int)
 
     curvature_points = thetas[
-        rng.choice(len(thetas), size=n_curvature_points, replace=True)
+        rng.choice(
+            len(thetas), size=n_curvature_points, replace=True
+        )  # randomly select n parameter vectors already sampled for which the Hessian is evaluated
     ]
 
-    # Natural Hessian scale: loss scale / parameter scale^2
+    # approximate Hessian scale: d²L/dθ² ≈ y_scale / typical_param_scale²
     curvature_scale = y_scale / max(typical_param_scale**2, 1e-12)
 
     hessian_condition_numbers = []
     normalized_spectral_radii = []
     negative_eigenvalue_fractions = []
 
-    eps = 1e-12
-    condition_number_cap = 1e12
+    eps = 1e-16
+    # condition_number_cap = 1e16
     curvature_norm = max(curvature_scale, eps)
-
-    # for theta in tqdm(
-    #     curvature_points,
-    #     desc="Hessian curvature test",
-    #     disable=not verbose,
-    # ):
-    #     theta = np.asarray(theta, dtype=float)
-
-    #     try:
-    #         H_sub = compute_hessian(theta, curvature_dim_indices)
-    #         eigvals = np.linalg.eigvalsh(H_sub)
-    #     except Exception:
-    #         continue
-
-    #     eigvals = np.asarray(eigvals, dtype=float)
 
     H_list = Parallel(
         n_jobs=n_jobs,
@@ -392,27 +340,21 @@ def ela_difficulty(
         max_abs_lambda = float(np.max(abs_eigvals))
         min_abs_lambda = float(np.min(abs_eigvals))
 
-        eig_tol = 1e-6 * max(max_abs_lambda, 1.0)
+        # eig_tol = 1e-6 * max(max_abs_lambda, 1.0)
 
-        # ------------------------------------------------------------
         # Metric 1: Hessian condition number
-        # ------------------------------------------------------------
-        if min_abs_lambda > eig_tol:
-            condition_number = max_abs_lambda / min_abs_lambda
-        else:
-            condition_number = condition_number_cap
+        #   if min_abs_lambda > eig_tol:
+        condition_number = max_abs_lambda / min_abs_lambda
+        # else:
+        # condition_number = condition_number_cap
 
-        hessian_condition_numbers.append(min(condition_number, condition_number_cap))
+        hessian_condition_numbers.append(condition_number)
 
-        # ------------------------------------------------------------
         # Metric 2: normalized spectral radius
-        # ------------------------------------------------------------
         normalized_spectral_radii.append(max_abs_lambda / curvature_norm)
 
-        # ------------------------------------------------------------
-        # Metric 3: negative eigenvalue fraction
-        # ------------------------------------------------------------
-        negative_eigenvalue_fractions.append(float(np.mean(eigvals < -eig_tol)))
+        # Metric 3: negative eigenvalue fractio
+        negative_eigenvalue_fractions.append(float(np.mean(eigvals < 0)))
 
     hessian_condition_numbers = np.asarray(hessian_condition_numbers, dtype=float)
 
