@@ -435,10 +435,12 @@ def ela_difficulty(
             if i == j:
                 continue
 
-            filt = float(max(ys[i], ys[j]))
+            filt = float(
+                max(ys[i], ys[j])
+            )  # the edge cannot exist before both vertices exist
             st.insert([int(i), int(j)], filtration=filt)
 
-    st.make_filtration_non_decreasing()
+    st.make_filtration_non_decreasing()  # GUDHI automatically fixes inconsistencies but there shouldn't be with max(ys[i], ys[j])
     st.persistence()
 
     intervals = st.persistence_intervals_in_dimension(0)
@@ -447,9 +449,9 @@ def ela_difficulty(
 
     ymax = float(np.max(ys))
 
-    births = []
-    deaths = []
-    lifetimes = []
+    births = []  # when each connected component appears
+    deaths = []  # when it disappears (merges)
+    lifetimes = []  # deaths - births
 
     for birth, death in tqdm(intervals, desc="Topological data analysis"):
         birth = float(birth)
@@ -474,13 +476,19 @@ def ela_difficulty(
     components_alive_over_time = []
 
     for t in np.sort(ys):
-        alive = np.sum((births <= t) & (deaths > t))
-        components_alive_over_time.append(int(alive))
+        alive = np.sum(
+            (births <= t) & (deaths > t)
+        )  # np.sum([True, True, False]) <-> 1 + 1 + 0 = 2
+        components_alive_over_time.append(
+            int(alive)
+        )  # at t loss value, a component is alive if b_i < t < d_i
 
     components_alive_over_time = np.asarray(components_alive_over_time, dtype=int)
 
     n_components_created = int(len(intervals))
-    n_merges = int(np.sum(np.isfinite(intervals[:, 1]))) if len(intervals) else 0
+    n_merges = (
+        int(np.sum(np.isfinite(intervals[:, 1]))) if len(intervals) else 0
+    )  # sum over bools
 
     max_components_alive = (
         int(np.max(components_alive_over_time))
@@ -538,7 +546,7 @@ def ela_difficulty(
         else:
             walk_indices = np.asarray(walk_indices)
 
-        theta_walk = thetas[walk_indices]
+        theta_walk = thetas[walk_indices]  # perfom permutation
         y_walk = ys[walk_indices]
 
         dtheta = theta_walk[1:] - theta_walk[:-1]
@@ -546,16 +554,15 @@ def ela_difficulty(
 
         norms = np.linalg.norm(dtheta, axis=1)
 
-        valid = norms > eps_norm
+        valid = norms > eps_norm  # avoid dividing by 0
 
         deltas = dy[valid] / norms[valid]
 
         return deltas
 
     def symbolize_deltas(deltas, epsilon):
-
+        # assign +-1 or 0 based on the value of delta
         deltas = np.asarray(deltas)
-
         symbols = np.zeros(len(deltas), dtype=int)
         symbols[deltas < -epsilon] = -1
         symbols[deltas > epsilon] = +1
@@ -571,27 +578,32 @@ def ela_difficulty(
         if len(symbols) < 2:
             return 0.0, {}
 
-        pairs = list(zip(symbols[:-1], symbols[1:]))
+        pairs = list(
+            zip(symbols[:-1], symbols[1:])
+        )  # compute the transitions: [(1,-1), (-1,0), (0,0), ...]
 
-        # On garde seulement les transitions a != b
-        diff_pairs = [(a, b) for a, b in pairs if a != b]
+        diff_pairs = [
+            (a, b) for a, b in pairs if a != b
+        ]  # keep only transitions where the symbol changes, the measure only cares about transitions between different states
 
         total_pairs = len(pairs)
 
         if total_pairs == 0:
             return 0.0, {}
 
-        counts = Counter(diff_pairs)
+        counts = Counter(diff_pairs)  # count the occurrences of each transition
 
         H = 0.0
         probs = {}
 
         for pair, count in counts.items():
-            p = count / total_pairs
+            p = (
+                count / total_pairs
+            )  # the remaining probability mass corresponds to the ignored self-transitions
             probs[pair] = p
 
             if p > 0:
-                H += -p * (np.log(p) / np.log(6))
+                H += -p * (np.log(p) / np.log(6))  # 6 possible transitions
 
         return H, probs
 
@@ -622,7 +634,9 @@ def ela_difficulty(
 
         positive = abs_deltas[abs_deltas > 0]
         if len(positive) > 0:
-            eps_min = max(np.min(positive) * 0.1, 1e-15)
+            eps_min = max(
+                np.min(positive) * 0.1, 1e-15
+            )  # start one order of magnitude below the smallest nonzero delta to probe the small-threshold regime
         else:
             eps_min = 1e-15
 
