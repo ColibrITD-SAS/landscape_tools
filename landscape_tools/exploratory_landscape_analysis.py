@@ -33,7 +33,7 @@ def ela_difficulty(
     n_eps: int = 2000,
     seed: Optional[int] = None,
     verbose: bool = True,
-    return_features: bool = True,
+    return_features: bool = False,
     n_jobs: int = -1,
 ):
     """Compute ELA difficulty scores based on:
@@ -59,7 +59,7 @@ def ela_difficulty(
             return np.nan
 
     # # ============================================================
-    # # 0) Global sampling, shared by convexity and curvature
+    # # 0) Global sampling
     # # ============================================================
 
     if sampling is None:
@@ -219,7 +219,9 @@ def ela_difficulty(
     ms = []
     linear_values = []
 
-    for _ in tqdm(range(n_pairs), desc="Convexity sampling", disable=not verbose):
+    for _ in tqdm(
+        range(n_pairs), desc="Convexity sampling", disable=not verbose, leave=False
+    ):
         i, j = rng.choice(indices, size=2, replace=False)  # select two random indices
 
         a = thetas[i]
@@ -238,7 +240,7 @@ def ela_difficulty(
 
     ym_values = Parallel(n_jobs=n_jobs)(  # left part in convexity inequality
         delayed(safe_eval)(m)
-        for m in tqdm(ms, desc="Convexity eval", disable=not verbose)
+        for m in tqdm(ms, desc="Convexity eval", disable=not verbose, leave=False)
     )
 
     for ym, linear_value in zip(ym_values, linear_values):
@@ -314,6 +316,7 @@ def ela_difficulty(
             curvature_points,
             desc="Hessian curvature test",
             disable=not verbose,
+            leave=False,
         )
     )
 
@@ -453,7 +456,9 @@ def ela_difficulty(
     deaths = []  # when it disappears (merges)
     lifetimes = []  # deaths - births
 
-    for birth, death in tqdm(intervals, desc="Topological data analysis"):
+    for birth, death in tqdm(
+        intervals, desc="Topological data analysis", disable=not verbose, leave=False
+    ):
         birth = float(birth)
 
         if np.isfinite(death):
@@ -647,7 +652,9 @@ def ela_difficulty(
 
         H_values = []
 
-        for eps in tqdm(epsilons, desc="Information content test"):
+        for eps in tqdm(
+            epsilons, desc="Information content test", disable=not verbose, leave=False
+        ):
             symbols = symbolize_deltas(deltas, eps)
             H, _ = information_content_from_symbols(symbols)
             H_values.append(H)
@@ -1005,6 +1012,6 @@ def ela_difficulty(
     #     print("")
 
     if return_features:
-        return features
+        return features, ela_df
 
-    return None
+    return ela_df
