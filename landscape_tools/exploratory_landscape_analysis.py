@@ -667,7 +667,70 @@ def ela_difficulty(
     infocontent_features = {"epsilon_max": epsilon_max, "H_max": H_max}
 
     # ============================================================
-    # 5) Combined features
+    # 7) Y-distribution
+    # ============================================================
+
+    from scipy.signal import find_peaks
+    from scipy.stats import gaussian_kde, kurtosis, skew
+
+    def y_distribution_metrics(ys, grid_size=2048):
+        """
+        Compute basic y distribution metrics:
+        - skewness
+        - kurtosis
+        - number of KDE peaks
+        - summary statistics
+        """
+
+        ys = np.asarray(ys, dtype=float)
+        ys = ys[np.isfinite(ys)]
+
+        if len(ys) < 5:
+            raise ValueError(f"Need at least 5 finite y values, got {len(ys)}.")
+
+        y_min = float(np.min(ys))
+        y_max = float(np.max(ys))
+        y_std = float(np.std(ys))
+
+        skewness_y = float(skew(ys, bias=False))  # symmetry of distribution
+        kurtosis_y = float(
+            kurtosis(ys, fisher=True, bias=False)
+        )  # normal law resemblance
+
+        # Number of peaks
+        if y_std < 1e-12 or y_max == y_min:
+            n_peaks = 1
+        else:
+            kde = gaussian_kde(ys)
+
+            padding = 0.05 * (y_max - y_min)
+            grid = np.linspace(y_min - padding, y_max + padding, grid_size)
+
+            kde_density = kde(grid)
+
+            peaks, _ = find_peaks(
+                kde_density,
+                height=0.05 * np.max(kde_density),
+                prominence=0.01 * np.max(kde_density),
+            )
+
+            n_peaks = max(1, len(peaks))
+
+        return {
+            "skewness_y": skewness_y,
+            "kurtosis_y": kurtosis_y,
+            "n_peaks": int(n_peaks),
+            "y_min": y_min,
+            "y_max": y_max,
+            "y_mean": float(np.mean(ys)),
+            "y_std": float(np.std(ys)),
+            "y_median": float(np.median(ys)),
+        }
+
+    ydistrib_features = y_distribution_metrics(ys)
+
+    # ============================================================
+    # 8) Combined features
     # ============================================================
 
     features = {
@@ -683,110 +746,263 @@ def ela_difficulty(
         "curvature": curvature_features,
         "topology": topology_features,
         "infocontent_features": infocontent_features,
+        "ydistrib_features": ydistrib_features,
     }
 
     # ============================================================
     # Print results
     # ============================================================
 
-    if verbose:
-        print("")
-        print("=" * 60)
-        print("[ELA] Summary")
-        print("-" * 60)
-        print("[ELA] Convexity")
-        print("-" * 60)
-        print(f"[ELA] convex_violation_fraction = {convex_violation_fraction:.3f}")
-        print("      Fraction of sampled segments that violate convexity.")
-        print(f"[ELA] mean_gap_norm = {mean_gap_norm:.3f}")
-        print("      Mean of normalized gap values.")
-        print(f"[ELA] mean_gap = {mean_gap:.3f}")
-        print("      Mean of gap values.")
-        print("")
-        print(f"[ELA] median_gap_norm = {median_gap_norm:.3f}")
-        print("      Median of normalized gap values.")
-        print(f"[ELA] median_gap = {median_gap:.3f}")
-        print("      Median of gap values.")
-        print("")
-        print("-" * 60)
-        print("[ELA] Curvature")
-        print("-" * 60)
+    import pandas as pd
 
-        print("[ELA] Hessian condition number")
-        print(
-            f"      median = {curvature_features['hessian_condition_number_median']:.3e}"
-        )
-        print(
-            f"      max    = {curvature_features['hessian_condition_number_max']:.3e}"
-        )
-        print("      Ratio max(abs(lambda)) / min(abs(lambda)) of Hessian eigenvalues.")
-        print(
-            "      Higher values indicate anisotropic local curvature or ill-conditioning."
-        )
-        print("")
+    ela_rows = [
+        # ==========================================================
+        # Convexity
+        # ==========================================================
+        [
+            "Convexity",
+            "Convex violation fraction",
+            convex_violation_fraction,
+            "Fraction of sampled segments that violate convexity.",
+        ],
+        [
+            "Convexity",
+            "Mean normalized gap",
+            mean_gap_norm,
+            "Mean of normalized gap values.",
+        ],
+        ["Convexity", "Mean gap", mean_gap, "Mean of gap values."],
+        [
+            "Convexity",
+            "Median normalized gap",
+            median_gap_norm,
+            "Median of normalized gap values.",
+        ],
+        ["Convexity", "Median gap", median_gap, "Median of gap values."],
+        # ==========================================================
+        # Curvature
+        # ==========================================================
+        [
+            "Curvature",
+            "Hessian condition number (median)",
+            curvature_features["hessian_condition_number_median"],
+            "Median ratio max(abs(lambda))/min(abs(lambda)) of Hessian eigenvalues.",
+        ],
+        [
+            "Curvature",
+            "Hessian condition number (max)",
+            curvature_features["hessian_condition_number_max"],
+            "Maximum ratio max(abs(lambda))/min(abs(lambda)) of Hessian eigenvalues.",
+        ],
+        [
+            "Curvature",
+            "Normalized Hessian spectral radius (median)",
+            curvature_features["normalized_hessian_spectral_radius_median"],
+            "Median largest absolute Hessian eigenvalue normalized by global curvature scale.",
+        ],
+        [
+            "Curvature",
+            "Normalized Hessian spectral radius (max)",
+            curvature_features["normalized_hessian_spectral_radius_max"],
+            "Maximum largest absolute Hessian eigenvalue normalized by global curvature scale.",
+        ],
+        [
+            "Curvature",
+            "Negative eigenvalue fraction (median)",
+            curvature_features["negative_eigenvalue_fraction_median"],
+            "Median fraction of significantly negative Hessian eigenvalues.",
+        ],
+        [
+            "Curvature",
+            "Negative eigenvalue fraction (max)",
+            curvature_features["negative_eigenvalue_fraction_max"],
+            "Maximum fraction of significantly negative Hessian eigenvalues.",
+        ],
+        # ==========================================================
+        # Topology
+        # ==========================================================
+        [
+            "Topology",
+            "Mean components alive",
+            topology_features["mean_components_alive"],
+            "Average number of connected components alive across filtration levels.",
+        ],
+        [
+            "Topology",
+            "Median components alive",
+            topology_features["median_components_alive"],
+            "Median number of connected components alive across filtration levels.",
+        ],
+        [
+            "Topology",
+            "Mean component lifetime",
+            topology_features["mean_component_lifetime"],
+            "Average persistence of connected components.",
+        ],
+        [
+            "Topology",
+            "Median component lifetime",
+            topology_features["median_component_lifetime"],
+            "Median persistence of connected components.",
+        ],
+        # ==========================================================
+        # Information Content
+        # ==========================================================
+        [
+            "Information Content",
+            "epsilon_max",
+            infocontent_features["epsilon_max"],
+            "Scale at which landscape changes are most detectable.",
+        ],
+        [
+            "Information Content",
+            "H_max",
+            infocontent_features["H_max"],
+            "Maximum information content.",
+        ],
+        # ==========================================================
+        # Y Distribution
+        # ==========================================================
+        [
+            "Y Distribution",
+            "Skewness",
+            ydistrib_features["skewness_y"],
+            "Third standardized central moment measuring asymmetry.",
+        ],
+        [
+            "Y Distribution",
+            "Kurtosis",
+            ydistrib_features["kurtosis_y"],
+            "Excess fourth standardized central moment measuring tail heaviness.",
+        ],
+        [
+            "Y Distribution",
+            "Number of peaks",
+            ydistrib_features["n_peaks"],
+            "Number of modes detected in the KDE estimate.",
+        ],
+    ]
 
-        print("[ELA] Normalized Hessian spectral radius")
-        print(
-            f"      median = {curvature_features['normalized_hessian_spectral_radius_median']:.3e}"
-        )
-        print(
-            f"      max    = {curvature_features['normalized_hessian_spectral_radius_max']:.3e}"
-        )
-        print(
-            "      Largest absolute Hessian eigenvalue, normalized by the global curvature scale."
-        )
-        print("      Higher values indicate strong local curvature.")
-        print("")
+    ela_df = pd.DataFrame(
+        ela_rows,
+        columns=[
+            "Section",
+            "Metric",
+            "Value",
+            "Description",
+        ],
+    )
 
-        print("[ELA] Negative eigenvalue fraction")
-        print(
-            f"      median = {curvature_features['negative_eigenvalue_fraction_median']:.3f}"
-        )
-        print(
-            f"      max    = {curvature_features['negative_eigenvalue_fraction_max']:.3f}"
-        )
-        print("      Fraction of Hessian eigenvalues that are significantly negative.")
-        print("      Higher values indicate stronger local non-convexity.")
-        print("")
+    print(ela_df.to_string(index=False))
 
-        print("=" * 60)
-        print("[ELA] Topological data analysis")
-        print("-" * 60)
+    # if verbose:
+    #     print("")
+    #     print("=" * 60)
+    #     print("[ELA] Summary")
+    #     print("-" * 60)
+    #     print("[ELA] Convexity")
+    #     print("-" * 60)
+    #     print(f"[ELA] convex_violation_fraction = {convex_violation_fraction:.3f}")
+    #     print("      Fraction of sampled segments that violate convexity.")
+    #     print(f"[ELA] mean_gap_norm = {mean_gap_norm:.3f}")
+    #     print("      Mean of normalized gap values.")
+    #     print(f"[ELA] mean_gap = {mean_gap:.3f}")
+    #     print("      Mean of gap values.")
+    #     print("")
+    #     print(f"[ELA] median_gap_norm = {median_gap_norm:.3f}")
+    #     print("      Median of normalized gap values.")
+    #     print(f"[ELA] median_gap = {median_gap:.3f}")
+    #     print("      Median of gap values.")
+    #     print("")
+    #     print("-" * 60)
+    #     print("[ELA] Curvature")
+    #     print("-" * 60)
 
-        print("[ELA] Components alive (connected components)")
-        print(f"      mean   = {topology_features['mean_components_alive']:.3f}")
-        print(f"      median = {topology_features['median_components_alive']:.3f}")
-        print("      Number of connected components alive across filtration levels.")
-        print(
-            "      Higher values mean that sampled points form more clearly separated groups across the filtration."
-        )
-        print(
-            "      This suggests a landscape with several distinct basin-like regions."
-        )
-        print("")
+    #     print("[ELA] Hessian condition number")
+    #     print(
+    #         f"      median = {curvature_features['hessian_condition_number_median']:.3e}"
+    #     )
+    #     print(
+    #         f"      max    = {curvature_features['hessian_condition_number_max']:.3e}"
+    #     )
+    #     print("      Ratio max(abs(lambda)) / min(abs(lambda)) of Hessian eigenvalues.")
+    #     print(
+    #         "      Higher values indicate anisotropic local curvature or ill-conditioning."
+    #     )
+    #     print("")
 
-        print("[ELA] Component lifetimes")
-        print(f"      mean   = {topology_features['mean_component_lifetime']:.3e}")
-        print(f"      median = {topology_features['median_component_lifetime']:.3e}")
-        print("      Persistence of connected components.")
-        print("      Larger values indicate more pronounced and stable basins.")
-        print("")
+    #     print("[ELA] Normalized Hessian spectral radius")
+    #     print(
+    #         f"      median = {curvature_features['normalized_hessian_spectral_radius_median']:.3e}"
+    #     )
+    #     print(
+    #         f"      max    = {curvature_features['normalized_hessian_spectral_radius_max']:.3e}"
+    #     )
+    #     print(
+    #         "      Largest absolute Hessian eigenvalue, normalized by the global curvature scale."
+    #     )
+    #     print("      Higher values indicate strong local curvature.")
+    #     print("")
 
-        print("=" * 60)
-        print("[ELA] Information content")
-        print("-" * 60)
-        print(f"      epsilon_max   = {infocontent_features['epsilon_max']:.3f}")
-        print(f"      H_max = {infocontent_features['H_max']:.3f}")
-        print(
-            "      epsilon_max is the level of detail where the landscape changes are easiest to detect."
-        )
-        print(
-            "      H_max measures how varied these changes are across the sampled landscape."
-        )
-        print(
-            "      Higher values suggest more visible changes and clearer directions for optimization."
-        )
-        print("")
+    #     print("[ELA] Negative eigenvalue fraction")
+    #     print(
+    #         f"      median = {curvature_features['negative_eigenvalue_fraction_median']:.3f}"
+    #     )
+    #     print(
+    #         f"      max    = {curvature_features['negative_eigenvalue_fraction_max']:.3f}"
+    #     )
+    #     print("      Fraction of Hessian eigenvalues that are significantly negative.")
+    #     print("      Higher values indicate stronger local non-convexity.")
+    #     print("")
+
+    #     print("=" * 60)
+    #     print("[ELA] Topological data analysis")
+    #     print("-" * 60)
+
+    #     print("[ELA] Components alive (connected components)")
+    #     print(f"      mean   = {topology_features['mean_components_alive']:.3f}")
+    #     print(f"      median = {topology_features['median_components_alive']:.3f}")
+    #     print("      Number of connected components alive across filtration levels.")
+    #     print(
+    #         "      Higher values mean that sampled points form more clearly separated groups across the filtration."
+    #     )
+    #     print(
+    #         "      This suggests a landscape with several distinct basin-like regions."
+    #     )
+    #     print("")
+
+    #     print("[ELA] Component lifetimes")
+    #     print(f"      mean   = {topology_features['mean_component_lifetime']:.3e}")
+    #     print(f"      median = {topology_features['median_component_lifetime']:.3e}")
+    #     print("      Persistence of connected components.")
+    #     print("      Larger values indicate more pronounced and stable basins.")
+    #     print("")
+
+    #     print("=" * 60)
+    #     print("[ELA] Information content")
+    #     print("-" * 60)
+    #     print(f"      epsilon_max   = {infocontent_features['epsilon_max']:.3f}")
+    #     print(f"      H_max = {infocontent_features['H_max']:.3f}")
+    #     print(
+    #         "      epsilon_max is the level of detail where the landscape changes are easiest to detect."
+    #     )
+    #     print(
+    #         "      H_max measures how varied these changes are across the sampled landscape."
+    #     )
+    #     print(
+    #         "      Higher values suggest more visible changes and clearer directions for optimization."
+    #     )
+    #     print("")
+
+    #     print("=" * 60)
+    #     print("[ELA] Y-distribution")
+    #     print("-" * 60)
+    #     print(f"      skewness   = {ydistrib_features['skewness_y']:.3f}")
+    #     print(f"      kurtosis_y = {ydistrib_features['kurtosis_y']:.3f}")
+    #     print("      ")
+    #     print("      ")
+    #     print("      ")
+    #     print("")
 
     if return_features:
         return features
