@@ -6,3 +6,4 @@ tqdm
 gudhi
 setuptools_scm
 qiskit
+pandas
