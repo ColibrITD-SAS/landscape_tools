@@ -78,7 +78,6 @@ def ela_difficulty(
     relative_changes = []
     y_scale_history = []
 
-    # Nombre total de points évalués, y compris les évaluations invalides
     n_evaluated = 0
 
     pbar = tqdm(
@@ -90,7 +89,6 @@ def ela_difficulty(
 
     while len(ys) < N_max:
 
-        # Nombre de points valides encore nécessaires
         remaining = N_max - len(ys)
         current_batch_size = min(batch_size, remaining)
 
@@ -113,7 +111,6 @@ def ela_difficulty(
                 thetas.append(theta)
                 ys.append(float(y))
 
-        # La barre mesure le nombre de points valides, pas le nombre de tentatives
         n_new_valid = len(ys) - n_valid_before
         pbar.update(n_new_valid)
 
@@ -153,28 +150,21 @@ def ela_difficulty(
     thetas = np.asarray(thetas, dtype=float)
     ys = np.asarray(ys, dtype=float)
 
-    # Estimation finale de y_scale
+    # y_scale estimation
     q10, q90 = np.percentile(ys, [10, 90])
     final_y_scale = max(q90 - q10, 1e-12)
 
-    # Résumé de la stabilité récente
     if relative_changes:
         n_recent = min(patience, len(relative_changes))
         recent_changes = np.asarray(relative_changes[-n_recent:])
 
         last_relative_change = recent_changes[-1]
-        mean_recent_relative_change = np.mean(recent_changes)
         max_recent_relative_change = np.max(recent_changes)
 
         print(
             f"[ELA] Global sampling completed:\n"
-            f"      valid samples            = {len(ys)}\n"
-            f"      total evaluations        = {n_evaluated}\n"
-            f"      valid evaluation rate    = {len(ys) / n_evaluated:.2%}\n"
             f"      final y_scale            = {final_y_scale:.6e}\n"
             f"      last relative change     = {last_relative_change:.3e}\n"
-            f"      mean recent change       = {mean_recent_relative_change:.3e}\n"
-            f"      max recent change        = {max_recent_relative_change:.3e}"
         )
 
         if max_recent_relative_change < rel_tol:
