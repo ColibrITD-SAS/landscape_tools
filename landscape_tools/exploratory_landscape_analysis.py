@@ -11,8 +11,8 @@ from tqdm.auto import tqdm
 @dataclass
 class SamplingConfig:
     N_min: int = 256
-    batch_size: int = 256
-    N_max: int = 2048
+    batch_size: int = 512
+    N_max: int = 4096
     rel_tol = 0.02
     patience = 2
 
@@ -75,76 +75,76 @@ def ela_difficulty(
     ys = []
 
     previous_y_scale = None
-    stable_count = 0
+    relative_changes = []
+    y_scale_history = []
 
-    pbar = tqdm(total=N_max, desc="Global sampling", disable=not verbose, leave=False)
+    # Nombre total de points évalués, y compris les évaluations invalides
+    n_evaluated = 0
+
+    pbar = tqdm(
+        total=N_max,
+        desc="Global sampling",
+        disable=not verbose,
+        leave=False,
+    )
 
     while len(ys) < N_max:
 
-        remaining = N_max - len(ys)  # compute what's left to reach N_max
+        # Nombre de points valides encore nécessaires
+        remaining = N_max - len(ys)
         current_batch_size = min(batch_size, remaining)
 
         theta_batch = [
-            np.asarray(sample_once(), dtype=float)
-            for _ in range(
-                current_batch_size
-            )  # array of batch_size containing sampled points
+            np.asarray(sample_once(), dtype=float) for _ in range(current_batch_size)
         ]
 
         y_batch = Parallel(n_jobs=n_jobs)(
-            delayed(safe_eval)(theta)
-            for theta in theta_batch  # loss value for each points
+            delayed(safe_eval)(theta) for theta in theta_batch
         )
+
+        n_evaluated += current_batch_size
+        n_valid_before = len(ys)
 
         for theta, y in zip(theta_batch, y_batch):
             if len(ys) >= N_max:
                 break
-            assert y is not None
-            if np.isfinite(y) and np.all(np.isfinite(theta)):
-                thetas.append(theta)
-                ys.append(y)
 
-        pbar.update(current_batch_size)
+            if y is not None and np.isfinite(y) and np.all(np.isfinite(theta)):
+                thetas.append(theta)
+                ys.append(float(y))
+
+        # La barre mesure le nombre de points valides, pas le nombre de tentatives
+        n_new_valid = len(ys) - n_valid_before
+        pbar.update(n_new_valid)
 
         if len(ys) < N_min:
             continue
 
-        ys_tmp = np.asarray(
-            ys, dtype=float
-        )  # converted into a NumPy array to enable statistical operations
+        ys_tmp = np.asarray(ys, dtype=float)
 
         q10, q90 = np.percentile(ys_tmp, [10, 90])
-        current_y_scale = max(
-            q90 - q10, 1e-12
-        )  # robust estimate of the spread of the outputs
+        current_y_scale = max(q90 - q10, 1e-12)
+
+        y_scale_history.append(
+            {
+                "N": len(ys),
+                "y_scale": current_y_scale,
+            }
+        )
 
         if previous_y_scale is not None:
-            relative_change = abs(
-                current_y_scale - previous_y_scale
-            ) / max(  # measures how much the estimated output scale has changed relative to the previous estimate
-                previous_y_scale, 1e-12
+            relative_change = abs(current_y_scale - previous_y_scale) / max(
+                abs(previous_y_scale), 1e-12
             )
+
+            relative_changes.append(relative_change)
 
             if verbose:
                 tqdm.write(
-                    f"[ELA] N={len(ys):d}, y_scale={current_y_scale:.3e}, "
+                    f"[ELA] N={len(ys):d}, "
+                    f"y_scale={current_y_scale:.3e}, "
                     f"relative_change={relative_change:.3e}"
                 )
-
-            if (
-                relative_change < rel_tol
-            ):  # requires the scale estimate to remain stable for several consecutive checks
-                stable_count += 1
-            else:
-                stable_count = 0
-
-            if stable_count >= patience:
-                if verbose:
-                    tqdm.write(
-                        f"[ELA] Stopping global sampling early at N={len(ys)} "
-                        f"because y_scale stabilized."
-                    )
-                break
 
         previous_y_scale = current_y_scale
 
@@ -152,6 +152,134 @@ def ela_difficulty(
 
     thetas = np.asarray(thetas, dtype=float)
     ys = np.asarray(ys, dtype=float)
+
+    # Estimation finale de y_scale
+    q10, q90 = np.percentile(ys, [10, 90])
+    final_y_scale = max(q90 - q10, 1e-12)
+
+    # Résumé de la stabilité récente
+    if relative_changes:
+        n_recent = min(patience, len(relative_changes))
+        recent_changes = np.asarray(relative_changes[-n_recent:])
+
+        last_relative_change = recent_changes[-1]
+        mean_recent_relative_change = np.mean(recent_changes)
+        max_recent_relative_change = np.max(recent_changes)
+
+        print(
+            f"[ELA] Global sampling completed:\n"
+            f"      valid samples            = {len(ys)}\n"
+            f"      total evaluations        = {n_evaluated}\n"
+            f"      valid evaluation rate    = {len(ys) / n_evaluated:.2%}\n"
+            f"      final y_scale            = {final_y_scale:.6e}\n"
+            f"      last relative change     = {last_relative_change:.3e}\n"
+            f"      mean recent change       = {mean_recent_relative_change:.3e}\n"
+            f"      max recent change        = {max_recent_relative_change:.3e}"
+        )
+
+        if max_recent_relative_change < rel_tol:
+            print(
+                f"[ELA] y_scale appears stable at N_max={N_max}. "
+                f"The maximum relative change over the last "
+                f"{n_recent} checks is below rel_tol={rel_tol:.3e}."
+            )
+        else:
+            print(
+                f"[ELA] y_scale may not be fully stable at N_max={N_max}. "
+                f"Consider increasing N_max because the maximum relative "
+                f"change over the last {n_recent} checks is "
+                f"{max_recent_relative_change:.3e}, above "
+                f"rel_tol={rel_tol:.3e}."
+            )
+    else:
+        print(
+            f"[ELA] Global sampling completed with {len(ys)} valid samples.\n"
+            f"      final y_scale = {final_y_scale:.6e}\n"
+            f"      Stability could not be estimated because only one "
+            f"y_scale measurement was available."
+        )
+
+    # thetas = []
+    # ys = []
+
+    # previous_y_scale = None
+    # stable_count = 0
+
+    # pbar = tqdm(total=N_max, desc="Global sampling", disable=not verbose, leave=False)
+
+    # while len(ys) < N_max:
+
+    #     remaining = N_max - len(ys)  # compute what's left to reach N_max
+    #     current_batch_size = min(batch_size, remaining)
+
+    #     theta_batch = [
+    #         np.asarray(sample_once(), dtype=float)
+    #         for _ in range(
+    #             current_batch_size
+    #         )  # array of batch_size containing sampled points
+    #     ]
+
+    #     y_batch = Parallel(n_jobs=n_jobs)(
+    #         delayed(safe_eval)(theta)
+    #         for theta in theta_batch  # loss value for each points
+    #     )
+
+    #     for theta, y in zip(theta_batch, y_batch):
+    #         if len(ys) >= N_max:
+    #             break
+    #         assert y is not None
+    #         if np.isfinite(y) and np.all(np.isfinite(theta)):
+    #             thetas.append(theta)
+    #             ys.append(y)
+
+    #     pbar.update(current_batch_size)
+
+    #     if len(ys) < N_min:
+    #         continue
+
+    #     ys_tmp = np.asarray(
+    #         ys, dtype=float
+    #     )  # converted into a NumPy array to enable statistical operations
+
+    #     q10, q90 = np.percentile(ys_tmp, [10, 90])
+    #     current_y_scale = max(
+    #         q90 - q10, 1e-12
+    #     )  # robust estimate of the spread of the outputs
+
+    #     if previous_y_scale is not None:
+    #         relative_change = abs(
+    #             current_y_scale - previous_y_scale
+    #         ) / max(  # measures how much the estimated output scale has changed relative to the previous estimate
+    #             previous_y_scale, 1e-12
+    #         )
+
+    #         if verbose:
+    #             tqdm.write(
+    #                 f"[ELA] N={len(ys):d}, y_scale={current_y_scale:.3e}, "
+    #                 f"relative_change={relative_change:.3e}"
+    #             )
+
+    #         if (
+    #             relative_change < rel_tol
+    #         ):  # requires the scale estimate to remain stable for several consecutive checks
+    #             stable_count += 1
+    #         else:
+    #             stable_count = 0
+
+    #         if stable_count >= patience:
+    #             if verbose:
+    #                 tqdm.write(
+    #                     f"[ELA] Stopping global sampling early at N={len(ys)} "
+    #                     f"because y_scale stabilized."
+    #                 )
+    #             break
+
+    #     previous_y_scale = current_y_scale
+
+    # pbar.close()
+
+    # thetas = np.asarray(thetas, dtype=float)
+    # ys = np.asarray(ys, dtype=float)
 
     if len(ys) < 5:
         raise RuntimeError(
@@ -713,7 +841,9 @@ def ela_difficulty(
             padding = 0.05 * (y_max - y_min)
             grid = np.linspace(y_min - padding, y_max + padding, grid_size)
 
-            kde_density = kde(grid)
+            kde_density = kde(
+                grid
+            )  # probability density, smoothed version of histogram
 
             peaks, _ = find_peaks(
                 kde_density,
@@ -770,7 +900,7 @@ def ela_difficulty(
             "Convexity",
             "Convex violation fraction",
             convex_violation_fraction,
-            "Fraction of sampled segments that violate convexity.",
+            "Fraction of sampled segments that violate convexity",
         ],
         [
             "Convexity",
@@ -778,14 +908,14 @@ def ela_difficulty(
             mean_gap_norm,
             "Mean of normalized gap values.",
         ],
-        ["Convexity", "Mean gap", mean_gap, "Mean of gap values."],
+        ["Convexity", "Mean gap", mean_gap, "Mean of gap values"],
         [
             "Convexity",
             "Median normalized gap",
             median_gap_norm,
             "Median of normalized gap values.",
         ],
-        ["Convexity", "Median gap", median_gap, "Median of gap values."],
+        ["Convexity", "Median gap", median_gap, "Median of gap values"],
         # ==========================================================
         # Curvature
         # ==========================================================
@@ -793,37 +923,37 @@ def ela_difficulty(
             "Curvature",
             "Hessian condition number (median)",
             curvature_features["hessian_condition_number_median"],
-            "Median ratio max(abs(lambda))/min(abs(lambda)) of Hessian eigenvalues.",
+            "Median ratio max(abs(lambda))/min(abs(lambda)) of Hessian eigenvalues",
         ],
         [
             "Curvature",
             "Hessian condition number (max)",
             curvature_features["hessian_condition_number_max"],
-            "Maximum ratio max(abs(lambda))/min(abs(lambda)) of Hessian eigenvalues.",
+            "Maximum ratio max(abs(lambda))/min(abs(lambda)) of Hessian eigenvalues",
         ],
         [
             "Curvature",
             "Normalized Hessian spectral radius (median)",
             curvature_features["normalized_hessian_spectral_radius_median"],
-            "Median largest absolute Hessian eigenvalue normalized by global curvature scale.",
+            "Median largest absolute Hessian eigenvalue normalized by global curvature scale",
         ],
         [
             "Curvature",
             "Normalized Hessian spectral radius (max)",
             curvature_features["normalized_hessian_spectral_radius_max"],
-            "Maximum largest absolute Hessian eigenvalue normalized by global curvature scale.",
+            "Maximum largest absolute Hessian eigenvalue normalized by global curvature scale",
         ],
         [
             "Curvature",
             "Negative eigenvalue fraction (median)",
             curvature_features["negative_eigenvalue_fraction_median"],
-            "Median fraction of significantly negative Hessian eigenvalues.",
+            "Median fraction of significantly negative Hessian eigenvalues",
         ],
         [
             "Curvature",
             "Negative eigenvalue fraction (max)",
             curvature_features["negative_eigenvalue_fraction_max"],
-            "Maximum fraction of significantly negative Hessian eigenvalues.",
+            "Maximum fraction of significantly negative Hessian eigenvalues",
         ],
         # ==========================================================
         # Topology
@@ -832,25 +962,25 @@ def ela_difficulty(
             "Topology",
             "Mean components alive",
             topology_features["mean_components_alive"],
-            "Average number of connected components alive across filtration levels.",
+            "Average number of connected components alive across filtration levels",
         ],
         [
             "Topology",
             "Median components alive",
             topology_features["median_components_alive"],
-            "Median number of connected components alive across filtration levels.",
+            "Median number of connected components alive across filtration levels",
         ],
         [
             "Topology",
             "Mean component lifetime",
             topology_features["mean_component_lifetime"],
-            "Average persistence of connected components.",
+            "Average persistence of connected components",
         ],
         [
             "Topology",
             "Median component lifetime",
             topology_features["median_component_lifetime"],
-            "Median persistence of connected components.",
+            "Median persistence of connected components",
         ],
         # ==========================================================
         # Information Content
@@ -859,13 +989,13 @@ def ela_difficulty(
             "Information Content",
             "epsilon_max",
             infocontent_features["epsilon_max"],
-            "Scale at which landscape changes are most detectable.",
+            "Scale at which landscape changes are most detectable",
         ],
         [
             "Information Content",
             "H_max",
             infocontent_features["H_max"],
-            "Maximum information content.",
+            "Maximum information content",
         ],
         # ==========================================================
         # Y Distribution
@@ -874,19 +1004,19 @@ def ela_difficulty(
             "Y Distribution",
             "Skewness",
             ydistrib_features["skewness_y"],
-            "Third standardized central moment measuring asymmetry.",
+            "Third standardized central moment measuring asymmetry",
         ],
         [
             "Y Distribution",
             "Kurtosis",
             ydistrib_features["kurtosis_y"],
-            "Excess fourth standardized central moment measuring tail heaviness.",
+            "Excess fourth standardized central moment measuring tail heaviness",
         ],
         [
             "Y Distribution",
             "Number of peaks",
             ydistrib_features["n_peaks"],
-            "Number of modes detected in the KDE estimate.",
+            "Number of modes detected in the KDE estimate",
         ],
     ]
 
