@@ -279,18 +279,18 @@ def ela_difficulty(
 
     dim = thetas.shape[1]
 
-    # ============================================================
-    # 1) Shared robust output scale
-    # ============================================================
+    # # ============================================================
+    # # 1) Shared robust output scale
+    # # ============================================================
 
-    q10, q90 = np.percentile(ys, [10, 90])
-    iqr = q90 - q10
+    # q10, q90 = np.percentile(ys, [10, 90])
+    # iqr = q90 - q10
 
-    y_scale = max(iqr, 1e-12)
-    # y_norm = (ys - np.min(ys)) / y_scale
+    # y_scale = max(iqr, 1e-12)
+    # # y_norm = (ys - np.min(ys)) / y_scale
 
-    if verbose:
-        print(f"[ELA] y_scale = {y_scale:.3e}")
+    # if verbose:
+    #     print(f"[ELA] y_scale = {y_scale:.3e}")
 
     # ============================================================
     # 2) Shared bounds / parameter scale
@@ -317,8 +317,8 @@ def ela_difficulty(
 
     typical_param_scale = float(np.mean(span))
 
-    if verbose:
-        print(f"[ELA] typical_param_scale = {typical_param_scale:.3e}")
+    # if verbose:
+    #     print(f"[ELA] typical_param_scale = {typical_param_scale:.3e}")
 
     # ============================================================
     # 3) Convexity difficulty
@@ -371,7 +371,7 @@ def ela_difficulty(
     if len(convex_gaps) == 0:
         raise RuntimeError("No valid convexity evaluations")
 
-    normalized_gaps = convex_gaps / y_scale
+    normalized_gaps = convex_gaps / final_y_scale
 
     convex_violation_fraction = float(np.mean(normalized_gaps > 0))
 
@@ -414,7 +414,7 @@ def ela_difficulty(
     ]
 
     # approximate Hessian scale: d²L/dθ² ≈ y_scale / typical_param_scale²
-    curvature_scale = y_scale / max(typical_param_scale**2, 1e-12)
+    curvature_scale = final_y_scale / max(typical_param_scale**2, 1e-12)
 
     hessian_condition_numbers = []
     normalized_spectral_radii = []
@@ -864,7 +864,7 @@ def ela_difficulty(
         "global": {
             "n_valid_samples": int(len(ys)),
             "dim": int(dim),
-            "y_scale": float(y_scale),
+            "y_scale": float(final_y_scale),
             "typical_param_scale": float(typical_param_scale),
             "bounds_lower": lower,
             "bounds_upper": upper,
