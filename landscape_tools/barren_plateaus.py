@@ -496,9 +496,9 @@ def plot_layerwise_qubits(
             label=None,
         )
 
-    plt.xlabel(r"Number of qubits $n_q$")
-    plt.ylabel(r"$\mathrm{Var}_{\theta}(L)$")
-    plt.title("Loss landscape concentration with increasing system size")
+    plt.xlabel(r"Number of qubits $n_q$", fontsize=14)
+    plt.ylabel(r"$\mathrm{Var}_{\theta}(L)$", fontsize=14)
+    plt.title("Loss landscape concentration with increasing system size", fontsize=14)
     plt.grid(True, alpha=0.4)
 
     handles_L = [
@@ -515,7 +515,7 @@ def plot_layerwise_qubits(
         handles=handles_L,
         title="Depth",
         loc="best",
-        fontsize=11,
+        fontsize=12,
         handlelength=4,
     )
     plt.text(
@@ -525,7 +525,7 @@ def plot_layerwise_qubits(
         transform=plt.gca().transAxes,
         ha="left",
         va="bottom",
-        fontsize=11,
+        fontsize=12,
         bbox=dict(
             boxstyle="round",
             facecolor="white",

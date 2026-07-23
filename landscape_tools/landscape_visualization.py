@@ -226,9 +226,9 @@ def loss_scan_2d_3d(
 
     cp1 = ax.contourf(T1, T2, l, levels=50, cmap="viridis")
 
-    ax.set_title("2D Loss Landscape")
-    ax.set_xlabel("t1")
-    ax.set_ylabel("t2")
+    ax.set_title("2D Loss Landscape", fontsize=16)
+    ax.set_xlabel("t1", fontsize=14)
+    ax.set_ylabel("t2", fontsize=14)
     fig2d.colorbar(cp1, ax=ax, label="Loss value")
 
     plt.tight_layout()
@@ -261,10 +261,10 @@ def loss_scan_2d_3d(
             alpha=0.8,
         )
 
-        ax1.set_title("3D Loss Landscape")
-        ax1.set_xlabel("t1")
-        ax1.set_ylabel("t2")
-        ax1.set_zlabel("Loss value")
+        ax1.set_title("3D Loss Landscape", fontsize=16)
+        ax1.set_xlabel("t1", fontsize=14)
+        ax1.set_ylabel("t2", fontsize=14)
+        ax1.set_zlabel("Loss value", fontsize=14)
 
         mappable = plt.cm.ScalarMappable(norm=norm, cmap="viridis")
         mappable.set_array(l)
@@ -524,9 +524,9 @@ def plot_pca_loss_scan_2d(
         zorder=5,
     )
 
-    ax.set_xlabel(f"PC1 ({100 * evr[0]:.2f}% variance)")
-    ax.set_ylabel(f"PC2 ({100 * evr[1]:.2f}% variance)")
-    ax.set_title(f"PCA Loss Landscape")
+    ax.set_xlabel(f"PC1 ({100 * evr[0]:.2f}% variance)", fontsize=14)
+    ax.set_ylabel(f"PC2 ({100 * evr[1]:.2f}% variance)", fontsize=14)
+    ax.set_title(f"PCA Loss Landscape", fontsize=16)
     ax.legend()
     fig.tight_layout()  # pyright: ignore[reportAttributeAccessIssue]
     plt.savefig("figures/pcaLandscape2d.pdf")
@@ -629,9 +629,9 @@ def plot_pca_loss_scan_3d(
         label="End",
     )
 
-    ax1.set_xlabel(f"PC1 ({100 * evr[0]:.2f}% variance)")
-    ax1.set_ylabel(f"PC2 ({100 * evr[1]:.2f}% variance)")
-    ax1.set_title(f"PCA Loss Landscape")
+    ax1.set_xlabel(f"PC1 ({100 * evr[0]:.2f}% variance)", fontsize=14)
+    ax1.set_ylabel(f"PC2 ({100 * evr[1]:.2f}% variance)", fontsize=14)
+    ax1.set_title(f"PCA Loss Landscape", fontsize=16)
     ax1.view_init(elev=elev, azim=azim)
     ax1.legend()
 
@@ -688,10 +688,10 @@ def plot_pca_loss_scan_3d(
         s=65,
         edgecolors="k",
     )
-    ax2.set_title("Log-scale surface")
-    ax2.set_xlabel(f"PC1 ({100 * evr[0]:.2f}%)")
-    ax2.set_ylabel(f"PC2 ({100 * evr[1]:.2f}%)")
-    ax2.set_zlabel("log(Loss value)")
+    ax2.set_title("Log-scale surface", fontsize=16)
+    ax2.set_xlabel(f"PC1 ({100 * evr[0]:.2f}%)", fontsize=14)
+    ax2.set_ylabel(f"PC2 ({100 * evr[1]:.2f}%)", fontsize=14)
+    ax2.set_zlabel("log(Loss value)", fontsize=14)
 
     ax1.view_init(elev=elev, azim=azim)
     ax2.view_init(elev=elev, azim=azim)
@@ -1140,11 +1140,12 @@ def plot_pca_analysis(
 
     ax_evr.set_xticks(comp_ids)
     ax_evr.set_xticklabels([f"PC{i}" for i in comp_ids])
-    ax_evr.set_ylabel("Variance ratio")
+    ax_evr.set_ylabel("Variance ratio", fontsize=14)
     ax_evr.set_title(
         f"PCA summary\n"
         f"trajectory_size={summary['n_steps']}, "
-        f"n_parameters={summary['n_parameters']}"
+        f"n_parameters={summary['n_parameters']}",
+        fontsize=14,
     )
     ax_evr.legend()
     apply_plain_format(ax_evr, "y")
@@ -1158,22 +1159,22 @@ def plot_pca_analysis(
     # --- B. Top global parameters by squared influence
     ax_sq.barh(labels, sq_vals, color="tab:blue", alpha=0.85)
     safe_log_scale(ax_sq, sq_vals, axis="x")
-    ax_sq.set_title(f"Top {n_top} parameters — global sq influence")
-    ax_sq.set_xlabel("sq influence")
+    ax_sq.set_title(f"Top {n_top} parameters — global sq influence", fontsize=14)
+    ax_sq.set_xlabel("sq influence", fontsize=14)
     apply_plain_format(ax_sq, "x")
 
     # --- C. Top global parameters by path influence
     ax_path.barh(labels, path_vals, color="tab:orange", alpha=0.85)
     safe_log_scale(ax_path, path_vals, axis="x")
-    ax_path.set_title(f"Top {n_top} parameters — global path influence")
-    ax_path.set_xlabel("path influence")
+    ax_path.set_title(f"Top {n_top} parameters — global path influence", fontsize=14)
+    ax_path.set_xlabel("path influence", fontsize=14)
     apply_plain_format(ax_path, "x")
 
     # --- D. Top global parameters by std
     ax_std.barh(labels, std_vals, color="tab:green", alpha=0.85)
     safe_log_scale(ax_std, std_vals, axis="x")
-    ax_std.set_title(f"Top {n_top} parameters — standard deviation")
-    ax_std.set_xlabel("std")
+    ax_std.set_title(f"Top {n_top} parameters — standard deviation", fontsize=14)
+    ax_std.set_xlabel("std", fontsize=14)
     apply_plain_format(ax_std, "x")
 
     fig_summary.tight_layout()
@@ -1226,17 +1227,17 @@ def plot_pca_analysis(
         # --- A. Signed loadings
         ax_load.barh(labels_c, loadings, color=colors, alpha=0.85)
         ax_load.axvline(0.0, color="black", lw=1)
-        ax_load.set_title(f"PC{comp['component_id']} — signed loadings")
-        ax_load.set_xlabel("loading")
+        ax_load.set_title(f"PC{comp['component_id']} — signed loadings", fontsize=14)
+        ax_load.set_xlabel("loading", fontsize=14)
         apply_plain_format(ax_load, "x")
 
         # --- B. Path contributions
         ax_path_comp.barh(labels_c, path_c, color="tab:purple", alpha=0.85)
         safe_log_scale(ax_path_comp, path_c, axis="x")
         ax_path_comp.set_title(
-            f"PC{comp['component_id']} — path contribution top {n_top}"
+            f"PC{comp['component_id']} — path contribution top {n_top}", fontsize=14
         )
-        ax_path_comp.set_xlabel("path contribution")
+        ax_path_comp.set_xlabel("path contribution", fontsize=14)
         apply_plain_format(ax_path_comp, "x")
 
     fig_components.tight_layout()
