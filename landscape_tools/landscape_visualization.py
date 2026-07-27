@@ -331,6 +331,7 @@ def pca_loss_scan(
     # -------------------- Load optimization records --------------------
 
     param_history = np.asarray(params_history)
+    params_history = [arr[1:] for arr in params_history]
 
     # -------------------- PCA computation --------------------
 
