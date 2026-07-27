@@ -330,8 +330,7 @@ def pca_loss_scan(
 
     # -------------------- Load optimization records --------------------
 
-    params_history = np.asarray(params_history)
-    param_history = [arr[1:] for arr in params_history]
+    param_history = np.asarray(params_history)
 
     # -------------------- PCA computation --------------------
 
@@ -1257,7 +1256,7 @@ def plot_pca_circuit_schematic_real_circuit(
     box_height: float = 0.5,
     show_values: bool = False,
     title: str | None = None,
-    show_gamma: bool = True,
+    show_gamma: bool = False,
     gamma_label: str | None = None,
     label_mode: str = "label",
     show_entanglers: bool = True,
