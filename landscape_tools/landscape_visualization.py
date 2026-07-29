@@ -240,9 +240,7 @@ def loss_scan_2d_3d(
     if plot3D:
 
         fig3d = plt.figure(figsize=(9, 6))
-        norm = colors.LogNorm(
-            vmin=np.percentile(l[l > 0], 1), vmax=np.percentile(l, 99)
-        )
+        norm = colors.LogNorm(vmin=l[l > 0].min(), vmax=l.max())
 
         ax1 = fig3d.add_subplot(111, projection="3d")
         ax1.set_box_aspect([1, 1, 1])
