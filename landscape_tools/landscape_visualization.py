@@ -886,11 +886,6 @@ def analyze_pca(
 
     global_path_influence: np.ndarray = weights @ path_contrib_per_component
 
-    # Normalisation dans [0, 1]
-    global_abs_influence /= np.max(global_abs_influence)
-    global_sq_influence /= np.max(global_sq_influence)
-    global_path_influence /= np.max(global_path_influence)
-
     correlations = np.full((n_params, n_components), np.nan)
 
     for j in range(n_params):
@@ -1397,6 +1392,18 @@ def plot_pca_circuit_schematic_real_circuit(
     if gamma_label is None:
         gamma_label = gamma_label_local
 
+    # Normalisation des valeurs pour l'affichage
+    if show_gamma and gamma_score is not None:
+        scale = np.nanmax(local_scores)  # gamma inclus
+    else:
+        scale = np.nanmax(param_scores)  # seulement les angles
+
+    if scale > 0:
+        param_scores = param_scores / scale
+
+        if gamma_score is not None:
+            gamma_score = gamma_score / scale
+
     score_by_param = dict(zip(qiskit_param_names, param_scores))
 
     label_by_param = {}
@@ -1647,23 +1654,24 @@ def plot_pca_circuit_schematic_real_circuit(
 
     max_x = x_positions[-1][0] if len(x_positions) > 0 else 0.0
 
-    all_param_scores = np.array(
-        [float(v) for v in score_by_param.values()],
-        dtype=float,
-    )
+    norm = Normalize(vmin=0.0, vmax=1.0)
+    # all_param_scores = np.array(
+    #     [float(v) for v in score_by_param.values()],
+    #     dtype=float,
+    # )
 
-    vmin = np.nanmin(all_param_scores)
-    vmax = np.nanmax(all_param_scores)
+    # vmin = np.nanmin(all_param_scores)
+    # vmax = np.nanmax(all_param_scores)
 
-    if gamma_score is not None and show_gamma:
-        vmin = min(vmin, gamma_score)
-        vmax = max(vmax, gamma_score)
+    # if gamma_score is not None and show_gamma:
+    #     vmin = min(vmin, gamma_score)
+    #     vmax = max(vmax, gamma_score)
 
-    if np.isclose(vmin, vmax):
-        vmin -= 1e-12
-        vmax += 1e-12
+    # if np.isclose(vmin, vmax):
+    #     vmin -= 1e-12
+    #     vmax += 1e-12
 
-    norm = Normalize(vmin=vmin, vmax=vmax)
+    # norm = Normalize(vmin=vmin, vmax=vmax)
     cmap_obj = plt.get_cmap(cmap)
 
     left_margin = -1.6 if (gamma_score is not None and show_gamma) else -0.8
