@@ -240,7 +240,7 @@ def loss_scan_2d_3d(
     if plot3D:
 
         fig3d = plt.figure(figsize=(9, 6))
-        norm = colors.LogNorm(vmin=l[l > 0].min(), vmax=l.max())
+        norm = colors.LogNorm(vmin=l[l > 0].min(), vmax=np.percentile(l, 99))
 
         ax1 = fig3d.add_subplot(111, projection="3d")
         ax1.set_box_aspect([1, 1, 1])
@@ -885,6 +885,11 @@ def analyze_pca(
     path_contrib_per_component = np.asarray(path_contrib_per_component)  # (K, D)
 
     global_path_influence: np.ndarray = weights @ path_contrib_per_component
+
+    # Normalisation dans [0, 1]
+    global_abs_influence /= np.max(global_abs_influence)
+    global_sq_influence /= np.max(global_sq_influence)
+    global_path_influence /= np.max(global_path_influence)
 
     correlations = np.full((n_params, n_components), np.nan)
 

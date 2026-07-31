@@ -216,8 +216,11 @@ def bootstrap_var_diagnostic_1d(
     score = float(var)
     boot_scores = np.empty(B)
 
+    # L'idée statistique est :
+    # "Si je refaisais l'expérience plusieurs fois, à quel point ma variance changerait-elle ?"
+    # Le bootstrap simule ces répétitions sans avoir besoin de refaire les mesures réelles.
     for b in range(B):
-        idx = rng.integers(0, N_samples, size=N_samples)
+        idx = rng.integers(0, N_samples, size=N_samples)  # tirage avec remise
         Lb = L_samples[idx]
 
         boot_scores[b] = np.var(Lb, ddof=1)

@@ -557,7 +557,7 @@ def ela_difficulty(
                 continue
 
             filt = float(
-                max(ys[i], ys[j])
+                max(ys[i], ys[j])  # date d'apparition de l'arete
             )  # the edge cannot exist before both vertices exist
             st.insert([int(i), int(j)], filtration=filt)
 
