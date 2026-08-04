@@ -679,7 +679,7 @@ def plot_joint_scaling_padding(
     padding_latex: dict[str, str],
     Ansatz: str,
     rel_err_target: float,
-) -> None:
+) -> Figure:
     """
     Plot the variance of loss values as a joint
     function of system size and circuit depth for a given padding strategy.
@@ -728,7 +728,7 @@ def plot_joint_scaling_padding(
     for x, s, y in zip(x_axis, secondary, tracked):
         groups_j[s].append((x, y))
 
-    plt.figure(figsize=(12, 7))
+    fig = plt.figure(figsize=(12, 7))
 
     all_pts = sorted(zip(x_axis, tracked))
     xs_all, ys_all = zip(*all_pts)
@@ -768,7 +768,8 @@ def plot_joint_scaling_padding(
     plt.yscale("log")
     plt.tight_layout()
     plt.savefig("figures/joint_scaling_padding.pdf")
-    plt.show()
+    # plt.show()
+    return fig
 
 
 class AnalysisResult(TypedDict):
@@ -1072,13 +1073,13 @@ def barren_plateaus_analysis(
 
                 results[lay].append(point)
 
-        plot_layerwise_qubits(
+        fig1 = plot_layerwise_qubits(
             results=results,
             N_layers=experiment.N_layers,
             make_param_text=param_text,
         )
 
-        return results
+        return results, fig1
 
     # -------------------- Analysis 2: layerwise_qubits_padding --------------------
 
@@ -1134,7 +1135,7 @@ def barren_plateaus_analysis(
 
                     results[(lay, pad)].append(point)
 
-        plot_layerwise_qubits_padding(
+        fig2 = plot_layerwise_qubits_padding(
             results=results,
             N_layers=experiment.N_layers,
             padding_types=experiment.padding_types,
@@ -1142,7 +1143,7 @@ def barren_plateaus_analysis(
             make_param_text=param_text,
         )
 
-        return results
+        return results, fig2
 
     # -------------------- Analysis 3: joint_scaling_padding --------------------
 
@@ -1202,7 +1203,7 @@ def barren_plateaus_analysis(
             "padding_type": padding_type,
         }
 
-        plot_joint_scaling_padding(
+        fig3 = plot_joint_scaling_padding(
             tracked=np.array(tracked),
             A_ext=A_ext,
             B_ext=B_ext,
@@ -1214,6 +1215,6 @@ def barren_plateaus_analysis(
             rel_err_target=sampling.rel_err_target,
         )
 
-        return joint_scaling_results
+        return joint_scaling_results, fig3
 
     return {}
