@@ -1156,14 +1156,17 @@ def plot_pca_analysis(
 
     labels = [shorten(item["label"]) for item in global_ranking][::-1]
 
-    sq_max = max(item["global_sq_influence"] for item in global_ranking)
-    sq_vals = [item[::- item in global_ranking["global_sq_influence"] / sq_max for-1]
+    sq_vals = [item["global_sq_influence"] for item in global_ranking]
+    sq_max = max(sq_vals) if sq_vals else 1
+    sq_vals = [v / sq_max for v in sq_vals][::-1]
 
-    path_max = max(item["global_path_influence"] for item in global_ranking)
-    path_vals = [item["global_path_influence"] / path_max for item in global_ranking][::-1]
+    path_vals = [item["global_path_influence"] for item in global_ranking]
+    path_max = max(path_vals) if path_vals else 1
+    path_vals = [v / path_max for v in path_vals][::-1]
 
-    std_max = max(item["std"] for item in global_ranking)
-    std_vals = [item["std"] / std_max for item in global_ranking][::-1]
+    std_vals = [item["std"] for item in global_ranking]
+    std_max = max(std_vals) if std_vals else 1
+    std_vals = [v / std_max for v in std_vals][::-1]
 
     # --- B. Top global parameters by squared influence
     ax_sq.barh(labels, sq_vals, color="tab:blue", alpha=0.85)
