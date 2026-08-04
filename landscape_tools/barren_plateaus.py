@@ -16,6 +16,7 @@ from typing import (
 
 import matplotlib.pyplot as plt
 import numpy as np
+from matplotlib.figure import Figure
 from matplotlib.lines import Line2D
 from numpy.typing import ArrayLike
 from qiskit import QuantumCircuit
@@ -454,7 +455,7 @@ def plot_layerwise_qubits(
     results: dict[int, list[Result]],
     N_layers: Sequence[int],
     make_param_text: str,
-) -> None:
+) -> Figure:
     """Plot the variance of loss values as a function of the number of qubits
     for different circuit depths.
 
@@ -479,7 +480,7 @@ def plot_layerwise_qubits(
         lay: layer_colors[i % len(layer_colors)] for i, lay in enumerate(N_layers)
     }
 
-    plt.figure(figsize=(12, 7))
+    fig = plt.figure(figsize=(12, 7))
 
     for lay in N_layers:
         if lay not in results:
@@ -538,7 +539,8 @@ def plot_layerwise_qubits(
     )
     plt.tight_layout()
     plt.savefig("figures/layerwise_qubits.pdf")
-    plt.show()
+    # plt.show()
+    return fig
 
 
 def plot_layerwise_qubits_padding(
@@ -547,7 +549,7 @@ def plot_layerwise_qubits_padding(
     padding_types: Optional[Sequence[PaddingType]],
     padding_latex: dict[str, str],
     make_param_text: str,
-) -> None:
+) -> Figure:
     """Plot the variance of loss values as a function of the number of qubits
     for different circuit depths and padding strategies.
 
@@ -587,7 +589,7 @@ def plot_layerwise_qubits_padding(
         for i, pad in enumerate(padding_types or [None])
     }
 
-    plt.figure(figsize=(12, 7))
+    fig = plt.figure(figsize=(12, 7))
 
     for lay in N_layers:
 
@@ -663,7 +665,8 @@ def plot_layerwise_qubits_padding(
     plt.tight_layout()
     os.makedirs("figures", exist_ok=True)
     plt.savefig("figures/layerwise_qubits_padding.pdf")
-    plt.show()
+    # plt.show()
+    return fig
 
 
 def plot_joint_scaling_padding(
