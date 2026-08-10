@@ -224,8 +224,9 @@ def loss_scan_2d_3d(
 
     fig2d, ax = plt.subplots(figsize=(9, 6))
 
-    cp1 = ax.contourf(T1, T2, l, levels=50, cmap="viridis")
-
+    cp1 = ax.contourf(
+        T1, T2, l, levels=50, cmap="viridis", norm=LogNorm(vmin=l.min(), vmax=l.max())
+    )
     ax.set_title("2D Loss Landscape", fontsize=16)
     ax.set_xlabel("t1", fontsize=14)
     ax.set_ylabel("t2", fontsize=14)
@@ -240,7 +241,7 @@ def loss_scan_2d_3d(
     if plot3D:
 
         fig3d = plt.figure(figsize=(9, 6))
-        norm = colors.LogNorm(vmin=l[l > 0].min(), vmax=np.percentile(l, 99))
+        norm = colors.LogNorm(vmin=l.min(), vmax=l.max())
 
         ax1 = fig3d.add_subplot(111, projection="3d")
         ax1.set_box_aspect([1, 1, 1])
@@ -263,6 +264,7 @@ def loss_scan_2d_3d(
         ax1.set_xlabel("t1", fontsize=14)
         ax1.set_ylabel("t2", fontsize=14)
         ax1.set_zlabel("Loss value", fontsize=14)
+        ax1.set_zscale("log")
 
         mappable = plt.cm.ScalarMappable(norm=norm, cmap="viridis")
         mappable.set_array(l)
