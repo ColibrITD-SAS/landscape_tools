@@ -224,13 +224,16 @@ def loss_scan_2d_3d(
 
     fig2d, ax = plt.subplots(figsize=(9, 6))
 
-    cp1 = ax.contourf(
-        T1, T2, l, levels=50, cmap="viridis", norm=LogNorm(vmin=l.min(), vmax=l.max())
-    )
+    # cp1 = ax.contourf(
+    #     T1, T2, l, levels=50, cmap="viridis", norm=LogNorm(vmin=l.min(), vmax=l.max())
+    # )
+
+    pcm = ax.pcolormesh(T1, T2, l, shading="auto", cmap="viridis", norm=LogNorm())
+
+    fig2d.colorbar(pcm, ax=ax, label="Loss value")
     ax.set_title("2D Loss Landscape", fontsize=16)
     ax.set_xlabel("t1", fontsize=14)
     ax.set_ylabel("t2", fontsize=14)
-    fig2d.colorbar(cp1, ax=ax, label="Loss value")
 
     plt.tight_layout()
     plt.savefig("figures/landscape2d.pdf")
