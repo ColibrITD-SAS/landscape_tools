@@ -267,7 +267,7 @@ def loss_scan_2d_3d(
         ax1.set_xlabel("t1", fontsize=14)
         ax1.set_ylabel("t2", fontsize=14)
         ax1.set_zlabel("Loss value", fontsize=14)
-        ax1.set_zscale("log")
+        # ax1.set_zscale("log")
 
         mappable = plt.cm.ScalarMappable(norm=norm, cmap="viridis")
         mappable.set_array(l)
