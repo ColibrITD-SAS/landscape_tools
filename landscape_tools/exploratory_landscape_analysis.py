@@ -33,7 +33,7 @@ def ela_difficulty(
     return_features: bool = False,
     n_jobs: int = -1,
 ):
-    """Compute exploratory landscape analysis difficulty scores.
+    """Compute exploratory landscape analysis difficulty metrics.
 
     The function samples points from the search space and characterizes the
     resulting loss landscape using geometric, curvature, and topological
