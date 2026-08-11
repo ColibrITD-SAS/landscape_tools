@@ -789,7 +789,10 @@ def ela_difficulty(
     epsilon_max = epsilons[idx_max]
     H_max = H_values[idx_max]
 
-    infocontent_features = {"epsilon_max": epsilon_max, "H_max": H_max}
+    infocontent_features = {
+        "epsilon_max_normalized": epsilon_max / final_y_scale,
+        "H_max": H_max,
+    }
 
     # ============================================================
     # 7) Y-distribution
@@ -977,8 +980,8 @@ def ela_difficulty(
         # ==========================================================
         [
             "Information Content",
-            "epsilon_max",
-            infocontent_features["epsilon_max"],
+            "epsilon_max_normalized",
+            infocontent_features["epsilon_max_normalized"],
             "Scale at which landscape changes are most detectable",
         ],
         [
