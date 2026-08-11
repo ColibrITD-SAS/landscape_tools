@@ -44,7 +44,7 @@ from landscape_tools import landscape_visualization, barren_plateaus
 <table>
 <tr>
 <td style="text-align:center">
-<img src="https://github.com/gabriel-legros-colibri.png" width="60px;"/><br/><sub><a href="https://github.com/gabriel-legros-colibri">Hamza Jaffali</a></sub>
+<img src="https://github.com/gabriel-legros-colibri.png" width="60px;"/><br/><sub><a href="https://github.com/gabriel-legros-colibri">Gabriel Legros</a></sub>
 </td>
 <td style="text-align:center">
 <img src="https://github.com/Henri-ColibrITD.png" width="60px;"/><br/><sub><a href="https://github.com/Henri-ColibrITD">Henri de Boutray</a></sub>
