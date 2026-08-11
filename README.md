@@ -39,6 +39,10 @@ pip install landscape_tools
 from landscape_tools import landscape_visualization, barren_plateaus
 ```
 
+## Contributors
+
+[![Contributors](https://contrib.rocks/image?repo=ColibrITD-SAS(https://github.com/ColibrITD-SAS/landscape_tools/graphs/contributors)
+
 <!-- ## Landscape Characterization
 
 This module provides utilities to analyze and visualize the optimization
