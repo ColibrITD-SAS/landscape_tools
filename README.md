@@ -41,11 +41,16 @@ from landscape_tools import landscape_visualization, barren_plateaus
 
 ## Contributors
 
-<a href="https://github.com/ColibrITD-SAS/landscape_tools/graphs/contributors"
-   target="_blank"
-   rel="noopener noreferrer">
-contrib.rocks/image?repo=ColibrITD-SAS/landscape_tools" />
-</a>
+<table>
+<tr>
+<td style="text-align:center">
+<img src="https://github.com/gabriel-legros-colibri.png" width="60px;"/><br/><sub><a href="https://github.com/gabriel-legros-colibri">Hamza Jaffali</a></sub>
+</td>
+<td style="text-align:center">
+<img src="https://github.com/Henri-ColibrITD.png" width="60px;"/><br/><sub><a href="https://github.com/Henri-ColibrITD">Henri de Boutray</a></sub>
+</td>
+</tr>
+</table>
 
 <!-- ## Landscape Characterization
 
