@@ -17,13 +17,10 @@ class SamplingConfig:
     patience = 2
 
 
-# TODO il faut expliquer eig_tol, condition_number_cap
 def ela_difficulty(
     sample_once: Callable[[], np.typing.ArrayLike],
     loss_value: Callable[[np.ndarray], float],
-    compute_hessian: Callable[
-        [np.ndarray, np.ndarray], float
-    ],  # TODO preciser dans la docstring que ca renvoie une matrice reelle symetrique
+    compute_hessian: Callable[[np.ndarray, np.ndarray], float],
     sampling: SamplingConfig | None = None,
     max_pairs: int = 1024,
     n_curvature_points: int = 128,
@@ -36,11 +33,82 @@ def ela_difficulty(
     return_features: bool = False,
     n_jobs: int = -1,
 ):
-    """Compute ELA difficulty scores based on:
+    """Compute exploratory landscape analysis difficulty scores.
+
+    The function samples points from the search space and characterizes the
+    resulting loss landscape using geometric, curvature, and topological
+    features. Sampling continues according to the convergence criteria defined
+    by ``sampling``. The extracted features are then aggregated into a dataframe.
 
     Args:
+        sample_once:
+            Function that generates one point from the search space. Each call
+            must return a one-dimensional array-like object with a consistent
+            number of coordinates.
+
+        loss_value:
+            Objective or loss function evaluated at a sampled point. It must
+            accept a one-dimensional NumPy array and return a finite scalar.
+
+        compute_hessian:
+            Function used to compute the Hessian at a sampled point. It must
+            return a two-dimensional, real-valued, symmetric matrix whose shape
+            matches the dimensionality of the sampled point.
+
+        sampling:
+            Configuration controlling adaptive sampling. It specifies the
+            minimum and maximum sample sizes, the batch size, the relative
+            convergence tolerance, and the number of consecutive stable
+            iterations required before sampling stops.
+
+        max_pairs:
+            Maximum number of point pairs used to estimate pairwise geometric
+            or loss-related features. Limiting this number reduces computation
+            time and memory usage for large samples.
+
+        n_curvature_points:
+            Maximum number of sampled points at which Hessian-based curvature
+            features are evaluated.
+
+        curvature_dims:
+            Number of dimensions used for curvature analysis. When unspecified,
+            all available dimensions are used. When specified, it must be
+            positive and no greater than the dimensionality of the sampled
+            points.
+
+        topology_k:
+            Number of nearest neighbors used to construct the local
+            neighborhood graph or topological representation of the sampled
+            landscape.
+
+        bounds:
+            Lower and upper bounds of the search space, provided as a pair of
+            array-like objects. Each bound must be compatible with the
+            dimensionality of the sampled points.
+
+        n_eps:
+            Number of epsilon or filtration values considered during the
+            topological analysis. A larger number provides finer resolution
+            at the cost of additional computation.
+
+        seed:
+            Seed used by the internal random-number generator to make
+            subsampling, pair selection, and other stochastic operations
+            reproducible.
+
+        verbose:
+            Whether to display progress information during the analysis.
+
+        return_features:
+            Whether to return the intermediate geometric, curvature, and
+            topological features together with the difficulty score.
+
+        n_jobs:
+            Number of parallel workers used for independent computations.
 
     Returns:
+        features:
+            Intermediate geometric, curvature, and topological features in a dataframe.
     """
 
     rng = np.random.default_rng(seed)
