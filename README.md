@@ -36,7 +36,7 @@ pip install landscape_tools
 ```
 
 ```python
-from landscape_tools import landscape_visualization, barren_plateaus
+from landscape_tools import landscape_visualization, barren_plateaus, exploratory_landscape_analysis
 ```
 
 ## Contributors
