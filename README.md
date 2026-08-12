@@ -39,6 +39,10 @@ pip install landscape_tools
 from landscape_tools import landscape_visualization, barren_plateaus, exploratory_landscape_analysis
 ```
 
+## Documentation
+
+More details are available in the [documentation](https://landscape-tools.colibri-quantum.com/).
+
 ## Contributors
 
 <table>
