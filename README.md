@@ -26,7 +26,7 @@
 **Landscape Tools** is a Python library designed to visualize, characterize, and analyze the loss landscapes of variational quantum algorithms. It provides utilities for one-dimensional, two-dimensional, and three-dimensional loss scans, PCA-based landscape projections, optimization trajectory visualization, and interpretable parameter-sensitivity analysis directly on quantum circuits. The library also includes tools for studying barren plateaus through variance-based scaling analyses over circuit depth, number of qubits, observables, and Pauli-string padding strategies. Built with quantum machine learning experiments in mind, Landscape Tools helps researchers diagnose trainability issues, inspect optimization dynamics, and better understand how variational quantum ansätze behave across parameter space.
 
 <p align="center">
-  <img src="ezgif.com-animated-gif-maker.gif" alt="Landscape Tools demo" width="800">
+  <img src="ezgif.com-gif-maker.gif" alt="Landscape Tools demo" width="800">
 </p>
 
 ## Installation
